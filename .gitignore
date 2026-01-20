@@ -1,0 +1,89 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging / build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# Type checking / lint / test caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =========================
+# Bash / general CLI outputs
+# =========================
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Local runtime state
+.cache/
+.tmp/
+run/
+state/
+
+# =========================
+# Secrets / credentials (DO NOT COMMIT)
+# =========================
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+*.token
+secrets/
+credentials/
+*.sqlite
+*.db
+
+# =========================
+# OS / editor junk
+# =========================
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains
+.idea/
+
+# =========================
+# Misc
+# =========================
+*.tar
+*.tar.gz
+*.zip

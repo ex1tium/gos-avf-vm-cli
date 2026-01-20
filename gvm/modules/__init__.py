@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from gvm.modules.apt import APTModule
 from gvm.modules.base import (
     Dependency,
     Module,
@@ -31,12 +32,13 @@ if TYPE_CHECKING:
 
 # Registry of available modules, mapping normalized names to module classes.
 # Add new modules here as they are implemented:
-#   "apt": APTModule,
 #   "ssh": SSHModule,
 #   "desktop": DesktopModule,
 #   "shell": ShellModule,
 #   "gui": GUIModule,
-AVAILABLE_MODULES: dict[str, type[Module]] = {}
+AVAILABLE_MODULES: dict[str, type[Module]] = {
+    "apt": APTModule,
+}
 
 __all__ = [
     # Registry

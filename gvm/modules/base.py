@@ -16,7 +16,7 @@ Example Usage:
     class APTModule(Module):
         name = "apt"
         description = "Configure APT package manager and install packages"
-        dependencies = []
+        dependencies = ()
 
         def is_installed(self) -> tuple[bool, str]:
             # Check if APT configuration already exists
@@ -36,7 +36,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Sequence
 
 if TYPE_CHECKING:
     from gvm.config import Config
@@ -120,7 +120,9 @@ class Module(ABC):
     Class Attributes:
         name: Unique module identifier (e.g., "apt", "ssh", "desktop")
         description: Human-readable description of the module's purpose
-        dependencies: List of Dependency objects declaring module dependencies
+        dependencies: Tuple of Dependency objects declaring module dependencies.
+                      Uses tuple (immutable) to prevent accidental shared state
+                      between module classes.
 
     Instance Attributes:
         config: Configuration object containing user settings
@@ -131,7 +133,7 @@ class Module(ABC):
         class SSHModule(Module):
             name = "ssh"
             description = "Configure SSH keys and authentication"
-            dependencies = [Dependency("apt", required=True)]
+            dependencies = (Dependency("apt", required=True),)
 
             def is_installed(self) -> tuple[bool, str]:
                 if Path("~/.ssh/id_ed25519").expanduser().exists():
@@ -150,7 +152,7 @@ class Module(ABC):
     # Class attributes to be defined by subclasses
     name: str = ""
     description: str = ""
-    dependencies: list[Dependency] = []
+    dependencies: Sequence[Dependency] = ()
 
     def __init__(
         self,

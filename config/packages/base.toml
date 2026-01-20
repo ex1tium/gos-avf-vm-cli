@@ -11,6 +11,7 @@ core = [
     "ca-certificates",
     "curl",
     "nano",
+    "vim",
     "less",
     "iproute2",
     "net-tools",

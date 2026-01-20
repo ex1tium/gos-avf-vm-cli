@@ -1,0 +1,20 @@
+# Base System Packages
+# Essential packages installed on all systems regardless of desktop choice.
+
+[meta]
+name = "Base System"
+description = "Essential system packages"
+type = "base"
+
+[packages]
+core = [
+    "ca-certificates",
+    "curl",
+    "nano",
+    "less",
+    "iproute2",
+    "net-tools",
+    "procps",
+    "dbus-user-session",
+    "openssh-server",
+]

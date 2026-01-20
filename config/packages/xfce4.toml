@@ -1,0 +1,34 @@
+# XFCE4 Desktop Configuration
+# Lightweight XFCE4 desktop environment as an alternative option.
+
+[meta]
+name = "XFCE4"
+description = "Lightweight XFCE4 desktop environment"
+type = "desktop"
+
+[packages]
+core = [
+    "xfce4",
+    "xfce4-goodies",
+]
+optional = [
+    "firefox-esr",
+    "thunar",
+    "xfce4-terminal",
+]
+wayland_helpers = []
+user_packages = []
+
+[environment]
+vars = [
+    "XDG_SESSION_TYPE=x11",
+    "GDK_BACKEND=x11",
+]
+
+[files]
+
+[session]
+start_command = "startxfce4"
+fallback_command = "xfce4-session"
+requires_dbus_session = true
+helper_script_name = "start-xfce4"

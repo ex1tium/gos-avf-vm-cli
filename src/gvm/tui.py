@@ -829,10 +829,10 @@ class CursesTUI:
             except curses.error:
                 pass
 
-            # Summary
+            # Summary (this session)
             y = 5
             try:
-                self.stdscr.addstr(y, 0, "Summary:", curses.A_BOLD)
+                self.stdscr.addstr(y, 0, "This Session:", curses.A_BOLD)
                 y += 1
 
                 completed = len(self.progress_state.completed)
@@ -840,7 +840,7 @@ class CursesTUI:
                 skipped = len(self.progress_state.skipped)
                 total = len(self.progress_state.modules)
 
-                self.stdscr.addstr(y, 2, f"Total modules: {total}")
+                self.stdscr.addstr(y, 2, f"Modules run: {total}")
                 y += 1
 
                 if completed > 0:
@@ -855,6 +855,15 @@ class CursesTUI:
 
                 if skipped > 0:
                     self.stdscr.addstr(y, 2, f"Skipped: {skipped}", curses.A_DIM)
+                    y += 1
+
+                # Show which modules were run
+                y += 1
+                self.stdscr.addstr(y, 2, "Modules:", curses.A_DIM)
+                y += 1
+                for mod in self.progress_state.modules:
+                    status = "✓" if mod in self.progress_state.completed else ("✗" if mod in self.progress_state.failed else "-")
+                    self.stdscr.addstr(y, 4, f"{status} {mod}", curses.A_DIM)
                     y += 1
             except curses.error:
                 pass
@@ -1022,12 +1031,13 @@ class CursesTUI:
             except curses.error:
                 pass
 
-            # Installed desktops
+            # Installed desktops (note: shows ALL installed, not just from this session)
             y += 2
             desktops = self._detect_installed_desktops()
             try:
                 self.stdscr.addstr(y, 0, "Installed Desktops:", curses.A_BOLD)
-                y += 1
+                self.stdscr.addstr(y + 1, 2, "(all installed, not just this session)", curses.A_DIM)
+                y += 2
                 if desktops:
                     for desktop in desktops:
                         self.stdscr.addstr(y, 2, desktop)
@@ -1053,7 +1063,13 @@ class CursesTUI:
                 break
 
     def _start_desktop(self) -> None:
-        """Start the selected desktop environment."""
+        """Start the selected desktop environment.
+
+        Uses os.execvp to replace the current process with the desktop launcher,
+        which avoids curses cleanup issues and gives the desktop full control.
+        """
+        import os
+
         desktops = self._detect_installed_desktops()
 
         if not desktops:
@@ -1067,21 +1083,18 @@ class CursesTUI:
         helper_script = Path.home() / ".local" / "bin" / f"start-{desktop}"
 
         if helper_script.exists():
-            # Clean up curses before launching desktop
+            # Clean up curses before replacing process
             if self.stdscr:
-                curses.endwin()
+                try:
+                    curses.endwin()
+                except curses.error:
+                    pass  # Ignore cleanup errors
 
+            # Replace current process with the helper script
+            # This avoids curses wrapper trying to call endwin() again
             try:
-                subprocess.Popen(
-                    [str(helper_script)],
-                    start_new_session=True,
-                )
+                os.execvp(str(helper_script), [str(helper_script)])
             except Exception as e:
-                # Report the error - do not attempt to re-initialize curses
-                # as this is unsafe outside the wrapper context.
-                # Terminal restoration is handled by the curses.wrapper that
-                # invoked _main_loop.
-                print(
-                    f"Failed to launch {helper_script}: {e}",
-                    file=sys.stderr,
-                )
+                # If exec fails, print error (we're already outside curses)
+                print(f"Failed to launch {helper_script}: {e}", file=sys.stderr)
+                sys.exit(1)

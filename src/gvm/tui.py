@@ -516,8 +516,6 @@ class CursesTUI:
         self.stdscr.clear()
         height, width = self.stdscr.getmaxyx()
 
-        state = self.progress_state
-
         # Title
         title = "GrapheneOS Debian VM Setup - Installation Progress"
         try:

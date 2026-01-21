@@ -39,7 +39,8 @@ def detect_debian_codename() -> Optional[str]:
         return None
 
     # Look for VERSION_CODENAME=<codename> (may be quoted or unquoted)
-    match = re.search(r'VERSION_CODENAME="?(\w+)"?', content)
+    # Support codenames with hyphens, dots, underscores (e.g., "bullseye-backports")
+    match = re.search(r'VERSION_CODENAME="?([A-Za-z0-9._-]+)"?', content)
     if match:
         return match.group(1)
 
@@ -66,12 +67,15 @@ def is_service_running(service_name: str, timeout: int = DEFAULT_PROBE_TIMEOUT) 
         >>> if is_service_running("ssh"):
         ...     print("SSH service is running")
     """
+    # Use safe PATH to prevent PATH hijacking
+    safe_env = {"PATH": "/usr/bin:/bin"}
     try:
         result = subprocess.run(
-            ["systemctl", "is-active", service_name],
+            ["systemctl", "is-active", "--", service_name],
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=safe_env,
         )
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired, PermissionError):
@@ -130,12 +134,21 @@ def get_user_home(username: str, timeout: int = DEFAULT_PROBE_TIMEOUT) -> Option
         >>> print(home)
         /home/droid
     """
+    # Validate username against POSIX portable filename character set
+    # Pattern: starts with letter or underscore, followed by alphanumerics, underscores,
+    # or hyphens, optionally ending with $ (for system accounts)
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_-]*\$?$", username):
+        return None
+
+    # Use safe PATH to prevent PATH hijacking
+    safe_env = {"PATH": "/usr/bin:/bin"}
     try:
         result = subprocess.run(
-            ["getent", "passwd", username],
+            ["getent", "passwd", "--", username],
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=safe_env,
         )
 
         if result.returncode != 0:
@@ -166,12 +179,21 @@ def user_exists(username: str, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
         >>> if user_exists("droid"):
         ...     print("User droid exists")
     """
+    # Validate username against POSIX portable filename character set
+    # Pattern: starts with letter or underscore, followed by alphanumerics, underscores,
+    # or hyphens, optionally ending with $ (for system accounts)
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_-]*\$?$", username):
+        return False
+
+    # Use safe PATH to prevent PATH hijacking
+    safe_env = {"PATH": "/usr/bin:/bin"}
     try:
         result = subprocess.run(
-            ["id", username],
+            ["id", "--", username],
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=safe_env,
         )
         return result.returncode == 0
     except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):

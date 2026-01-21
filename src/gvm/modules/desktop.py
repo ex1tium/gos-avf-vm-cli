@@ -233,7 +233,7 @@ class DesktopModule(Module):
 
         if self.dry_run:
             print(f"[DRY RUN] Would download packages: {', '.join(packages)}")
-            print(f"[DRY RUN] Would install packages from cache")
+            print("[DRY RUN] Would install packages from cache")
             self._report_progress(
                 progress_callback,
                 base_progress + 0.4 * progress_scale,

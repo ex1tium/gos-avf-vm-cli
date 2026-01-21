@@ -236,13 +236,29 @@ echo ""
             desktop: DesktopConfig instance.
 
         Returns:
-            Script filename (without path).
+            Script filename (without path), sanitized to prevent path traversal.
         """
         if desktop.session_helper_script_name:
             filename = desktop.session_helper_script_name
         else:
             # Generate safe slug: lowercase, spaces to hyphens
             filename = desktop.name.lower().replace(" ", "-")
+
+        # Sanitize: extract basename to prevent path traversal
+        filename = Path(filename).name
+
+        # Remove any . or .. components that might remain
+        filename = filename.lstrip(".")
+
+        # Whitelist characters: only allow alphanumeric, hyphen, underscore
+        filename = re.sub(r"[^a-zA-Z0-9_-]", "-", filename)
+
+        # Collapse repeated hyphens and trim leading/trailing hyphens
+        filename = re.sub(r"-+", "-", filename).strip("-")
+
+        # Ensure non-empty filename
+        if not filename:
+            filename = "desktop"
 
         # Prefix with 'start-' only when not already present
         if not filename.startswith("start-"):

@@ -75,13 +75,13 @@ def ensure_snippet(
     if has_begin or has_end:
         if has_begin and not has_end:
             print(f"Warning: Found partial snippet '{label}' in {file_path} (begin marker without end marker)")
-            print(f"  Removing partial block and re-adding complete snippet")
+            print("  Removing partial block and re-adding complete snippet")
             # Remove from begin marker to end of content
             begin_idx = content.index(marker_begin)
             content = content[:begin_idx].rstrip("\n")
         elif has_end and not has_begin:
             print(f"Warning: Found partial snippet '{label}' in {file_path} (end marker without begin marker)")
-            print(f"  Removing partial block and re-adding complete snippet")
+            print("  Removing partial block and re-adding complete snippet")
             # Remove from start of line containing end marker to the end marker
             end_idx = content.index(marker_end)
             # Find start of line containing end marker
@@ -136,8 +136,13 @@ def safe_write(
         ... )
     """
     # Determine if we need sudo (system files outside home)
+    # Use Path.relative_to() to properly check path containment
     home = Path.home()
-    needs_sudo = not str(path).startswith(str(home))
+    try:
+        path.relative_to(home)
+        needs_sudo = False
+    except ValueError:
+        needs_sudo = True
 
     # Create backup if requested and file exists
     if backup and path.exists():

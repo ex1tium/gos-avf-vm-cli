@@ -136,10 +136,18 @@ def save_last_desktop(desktop_name: str) -> None:
 
     Args:
         desktop_name: Name of desktop to save.
+
+    Note:
+        Failures are logged as warnings but do not raise exceptions,
+        as this is just a convenience feature.
     """
-    last_desktop_file = Path.home() / ".config" / "gvm" / "last-desktop"
-    last_desktop_file.parent.mkdir(parents=True, exist_ok=True)
-    last_desktop_file.write_text(desktop_name + "\n")
+    try:
+        last_desktop_file = Path.home() / ".config" / "gvm" / "last-desktop"
+        last_desktop_file.parent.mkdir(parents=True, exist_ok=True)
+        last_desktop_file.write_text(desktop_name + "\n")
+    except OSError as e:
+        # Log warning but don't fail - this is just a convenience feature
+        print(f"Warning: Could not save last desktop preference: {e}")
 
 
 def launch_desktop(config: Config, desktop_name: str, verbose: bool = False) -> int:

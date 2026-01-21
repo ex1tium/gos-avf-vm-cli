@@ -118,7 +118,7 @@ def cmd_gpu_status(verbose: bool = False) -> int:
     if verbose:
         print("\nDiagnostics:")
         print(f"  is_active: {is_active}")
-        print(f"  Raw message:\n    " + message.replace("\n", "\n    "))
+        print("  Raw message:\n    " + message.replace("\n", "\n    "))
 
     if is_active:
         print("\n✓ GPU acceleration appears to be active")

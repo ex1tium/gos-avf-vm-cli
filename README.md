@@ -41,7 +41,7 @@ When you're ready to use a desktop environment:
 
 > **Note**: GPU acceleration is provided via ANGLE-based VirGL. Some applications
 > requiring newer OpenGL versions may not work until full GPU virtualization
-> is available (currently Pixel 10+ only with gfxstream).
+> is available in future AVF releases.
 
 ## Features
 

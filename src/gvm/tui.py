@@ -399,11 +399,15 @@ class CursesTUI:
             elif key in (ord("q"), ord("Q"), 27):  # q, Q, or Escape
                 return []
             elif key in (curses.KEY_UP, ord("k")):
-                state.cursor_pos = max(0, state.cursor_pos - 1)
+                if state.components:
+                    state.cursor_pos = max(0, state.cursor_pos - 1)
             elif key in (curses.KEY_DOWN, ord("j")):
-                state.cursor_pos = min(len(state.components) - 1, state.cursor_pos + 1)
+                if state.components:
+                    state.cursor_pos = min(len(state.components) - 1, state.cursor_pos + 1)
             elif key == ord(" "):
-                # Toggle selection
+                # Toggle selection (guard against empty list)
+                if not state.components:
+                    continue
                 comp = state.components[state.cursor_pos]
                 is_selecting = not state.selections.get(comp.id, False)
                 # Desktop entries are mutually exclusive

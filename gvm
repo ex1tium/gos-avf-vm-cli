@@ -223,9 +223,20 @@ Your Python version: $(get_python_version)"
         warn "Some dependencies are missing: ${needs_install[*]}"
         echo ""
 
-        # Ask for confirmation
-        read -r -p "Install missing dependencies? [Y/n] " response
-        response=${response:-Y}
+        # Auto-install if non-interactive (--all flag or not a TTY)
+        local auto_install=false
+        if [ "${GVM_AUTO_INSTALL:-}" = "1" ] || ! [ -t 0 ]; then
+            auto_install=true
+        fi
+
+        local response="Y"
+        if [ "$auto_install" = false ]; then
+            # Ask for confirmation only in interactive mode
+            read -r -p "Install missing dependencies? [Y/n] " response
+            response=${response:-Y}
+        else
+            info "Auto-installing dependencies (non-interactive mode)"
+        fi
 
         if [[ "$response" =~ ^[Yy]$ ]] || [[ -z "$response" ]]; then
             install_packages "${needs_install[@]}"
@@ -273,11 +284,15 @@ main() {
     # Determine if we should run preflight checks
     # Run for 'setup' command, but not if --help is requested
     if [ "$cmd" = "setup" ]; then
-        # Check if --help is in the args
+        # Check if --help or --all is in the args
         for arg in "$@"; do
             if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
                 run_preflight=false
                 break
+            fi
+            # Set auto-install for non-interactive mode
+            if [ "$arg" = "--all" ]; then
+                export GVM_AUTO_INSTALL=1
             fi
         done
         # If not help, run preflight

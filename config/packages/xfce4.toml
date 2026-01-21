@@ -30,6 +30,6 @@ vars = [
 
 [session]
 start_command = "dbus-run-session startxfce4"
-fallback_command = "xfce4-session"
+fallback_command = "dbus-run-session xfce4-session"
 requires_dbus_session = false
 helper_script_name = "start-xfce4"

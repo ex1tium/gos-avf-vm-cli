@@ -117,8 +117,8 @@ class TestDesktopConfigLoading(unittest.TestCase):
     @patch("gvm.modules.desktop.safe_write")
     def test_error_when_requested_desktop_not_found(
         self,
-        mock_write: MagicMock,
-        mock_run: MagicMock,
+        _mock_write: MagicMock,
+        _mock_run: MagicMock,
         mock_discover: MagicMock,
     ) -> None:
         """Module returns error when requested desktop not found."""

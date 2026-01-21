@@ -87,3 +87,4 @@ Thumbs.db
 *.tar
 *.tar.gz
 *.zip
+.claude/

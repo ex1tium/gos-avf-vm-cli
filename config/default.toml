@@ -1,0 +1,44 @@
+# GVM Default Configuration
+# This file contains all default settings for the GrapheneOS VM Setup Tool.
+# User settings in ~/.config/gvm/config.toml will override these values.
+
+[meta]
+tool_version = "1.0.0"
+default_distro = "debian-trixie"
+
+[environment]
+vm_user = "droid"
+host_name = "GrapheneOS Terminal"
+port_forward_note = "GrapheneOS Terminal Port Control will prompt to allow this port"
+
+[ports]
+ssh_forward = 2222
+ssh_internal = 22
+
+[apt]
+retries = 10
+http_timeout = 60
+https_timeout = 60
+pipeline_depth = 0
+mirrors = [
+    "https://deb.debian.org/debian",
+    "https://security.debian.org/debian-security",
+]
+components = ["main", "contrib", "non-free", "non-free-firmware"]
+
+[ssh]
+permit_root_login = "no"
+password_auth = true
+pubkey_auth = true
+listen_address = "0.0.0.0"
+
+[features]
+install_desktop = true
+install_shell_mods = true
+auto_display = true
+show_banner = true
+
+[banner]
+title = "GrapheneOS Linux VM Status"
+show_ssh_note = true
+ssh_note = "Note: GrapheneOS Terminal Port Control will NOT expose port 22."

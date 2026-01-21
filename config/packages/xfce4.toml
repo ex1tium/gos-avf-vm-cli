@@ -1,0 +1,35 @@
+# XFCE4 Desktop Configuration
+# Lightweight XFCE4 desktop environment as an alternative option.
+
+[meta]
+name = "XFCE4"
+description = "Lightweight XFCE4 desktop environment"
+type = "desktop"
+
+[packages]
+core = [
+    "xfce4",
+    "xfce4-goodies",
+]
+optional = [
+    "firefox-esr",
+    "thunar",
+    "xfce4-terminal",
+]
+wayland_helpers = []
+user_packages = []
+
+[environment]
+# XFCE4 traditionally runs on X11. These vars are minimal defaults.
+# For Wayland compositors (e.g., labwc), add Wayland-specific vars to a custom config.
+vars = [
+    "XDG_SESSION_TYPE=x11",
+]
+
+[files]
+
+[session]
+start_command = "dbus-run-session startxfce4"
+fallback_command = "dbus-run-session xfce4-session"
+requires_dbus_session = false
+helper_script_name = "start-xfce4"

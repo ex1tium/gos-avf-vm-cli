@@ -1,0 +1,332 @@
+#!/usr/bin/env bash
+#
+# GVM - GrapheneOS Debian VM Setup Tool
+#
+# Root-level wrapper script for convenient CLI access.
+# This script ensures the gvm Python module can be executed from the repository root.
+#
+# The 'setup' command automatically checks and installs missing dependencies.
+#
+# Usage:
+#   ./gvm --help              Show help
+#   ./gvm setup               Interactive TUI setup (auto-installs deps)
+#   ./gvm setup --all         Non-interactive full setup
+#   ./gvm apt                 Configure APT
+#   ./gvm ssh                 Configure SSH
+#   ./gvm desktop list        List available desktops
+#   ./gvm info                Show system information
+#
+# Alternative invocation (equivalent):
+#   python3 -m gvm <command>
+#
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Determine the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Function to print error and exit
+error_exit() {
+    echo -e "${RED}Error:${NC} $1" >&2
+    exit 1
+}
+
+# Function to print info message
+info() {
+    echo -e "${CYAN}>>>${NC} $1"
+}
+
+# Function to print success message
+success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+# Function to print warning message
+warn() {
+    echo -e "${YELLOW}!${NC} $1"
+}
+
+# Check if python3 is available
+check_python() {
+    if ! command -v python3 &> /dev/null; then
+        return 1
+    fi
+    return 0
+}
+
+# Get Python version as "major.minor"
+get_python_version() {
+    python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'
+}
+
+# Check if Python version is >= 3.11
+check_python_version() {
+    local major minor
+    major=$(python3 -c 'import sys; print(sys.version_info.major)')
+    minor=$(python3 -c 'import sys; print(sys.version_info.minor)')
+
+    if [ "$major" -lt 3 ] || { [ "$major" -eq 3 ] && [ "$minor" -lt 11 ]; }; then
+        return 1
+    fi
+    return 0
+}
+
+# Check if curses module is available
+check_curses() {
+    python3 -c "import curses" 2>/dev/null
+}
+
+# Check if tomllib module is available
+check_tomllib() {
+    python3 -c "import tomllib" 2>/dev/null
+}
+
+# Install system packages using apt
+install_packages() {
+    local packages=("$@")
+    info "Installing packages: ${packages[*]}"
+
+    if ! sudo apt-get update -qq; then
+        error_exit "Failed to update package index"
+    fi
+
+    if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${packages[@]}"; then
+        error_exit "Failed to install packages: ${packages[*]}"
+    fi
+
+    success "Packages installed successfully"
+}
+
+# Run pre-flight checks and install missing dependencies
+# Only runs for 'setup' command to provide self-bootstrapping experience
+preflight_setup() {
+    local needs_install=()
+    local python_ok=true
+
+    echo ""
+    echo -e "${CYAN}GVM Pre-flight Check${NC}"
+    echo "===================="
+    echo ""
+
+    # Check 1: Python availability
+    echo -n "Checking Python... "
+    if ! check_python; then
+        echo -e "${RED}NOT FOUND${NC}"
+        needs_install+=("python3")
+        python_ok=false
+    else
+        local pyver
+        pyver=$(get_python_version)
+        if check_python_version; then
+            echo -e "${GREEN}OK${NC} (Python $pyver)"
+        else
+            echo -e "${RED}TOO OLD${NC} (Python $pyver, need 3.11+)"
+            echo ""
+            error_exit "Python 3.11+ is required but $pyver is installed.
+Please upgrade Python manually:
+  sudo apt install python3.11  # or newer version available in your repos"
+        fi
+    fi
+
+    # If Python wasn't found, we need to install it first
+    if [ "$python_ok" = false ]; then
+        echo ""
+        warn "Python not found. Installing python3..."
+        install_packages "python3"
+
+        # Re-check after install
+        if ! check_python; then
+            error_exit "Python installation failed"
+        fi
+        if ! check_python_version; then
+            warn "Default python3 is too old ($(get_python_version)). Trying python3.12..."
+            # Try installing python3.12 first (more common in newer repos)
+            if sudo apt-get install -y -qq python3.12 2>/dev/null; then
+                success "python3.12 installed"
+                # Register python3.12 as an alternative and set it as default
+                if command -v update-alternatives &> /dev/null; then
+                    sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 2 2>/dev/null || true
+                    sudo update-alternatives --set python3 /usr/bin/python3.12 2>/dev/null || true
+                fi
+            else
+                warn "python3.12 not available. Trying python3.11..."
+                if sudo apt-get install -y -qq python3.11 2>/dev/null; then
+                    success "python3.11 installed"
+                    # Register python3.11 as an alternative and set it as default
+                    if command -v update-alternatives &> /dev/null; then
+                        sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 2 2>/dev/null || true
+                        sudo update-alternatives --set python3 /usr/bin/python3.11 2>/dev/null || true
+                    fi
+                else
+                    error_exit "Could not install Python 3.11+.
+The default python3 package provides $(get_python_version) which is too old.
+Please install Python 3.11+ manually:
+  - Debian 12+: sudo apt install python3.11
+  - Ubuntu 22.04+: sudo apt install python3.11
+  - Older Ubuntu: Use the deadsnakes PPA:
+      sudo add-apt-repository ppa:deadsnakes/ppa
+      sudo apt update
+      sudo apt install python3.11"
+                fi
+            fi
+            # Re-check after fallback install (hash -r to refresh PATH cache)
+            hash -r 2>/dev/null || true
+            if ! check_python_version; then
+                error_exit "Python 3.11+ still not available after installation attempts.
+Installed Python version: $(get_python_version)
+Please install Python 3.11+ manually and ensure it is the default python3."
+            fi
+        fi
+        success "Python installed"
+        echo ""
+    fi
+
+    # Check 2: tomllib (built into Python 3.11+)
+    echo -n "Checking tomllib... "
+    if check_tomllib; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}MISSING${NC}"
+        error_exit "tomllib module not available. This requires Python 3.11+.
+Your Python version: $(get_python_version)"
+    fi
+
+    # Check 3: curses module (needed for TUI)
+    echo -n "Checking curses... "
+    if check_curses; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${YELLOW}MISSING${NC}"
+        # On Debian, curses might need additional packages
+        needs_install+=("python3-curses" "libncurses-dev")
+    fi
+
+    # Check 4: Common tools we'll need
+    echo -n "Checking sudo... "
+    if command -v sudo &> /dev/null; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}MISSING${NC}"
+        error_exit "sudo is required but not installed"
+    fi
+
+    # Install missing packages if any
+    if [ ${#needs_install[@]} -gt 0 ]; then
+        echo ""
+        warn "Some dependencies are missing: ${needs_install[*]}"
+        echo ""
+
+        # Auto-install if non-interactive (--all flag or not a TTY)
+        local auto_install=false
+        if [ "${GVM_AUTO_INSTALL:-}" = "1" ] || ! [ -t 0 ]; then
+            auto_install=true
+        fi
+
+        local response="Y"
+        if [ "$auto_install" = false ]; then
+            # Ask for confirmation only in interactive mode
+            read -r -p "Install missing dependencies? [Y/n] " response
+            response=${response:-Y}
+        else
+            info "Auto-installing dependencies (non-interactive mode)"
+        fi
+
+        if [[ "$response" =~ ^[Yy]$ ]] || [[ -z "$response" ]]; then
+            install_packages "${needs_install[@]}"
+
+            # Verify curses after install
+            echo ""
+            echo -n "Verifying curses... "
+            if check_curses; then
+                echo -e "${GREEN}OK${NC}"
+            else
+                echo -e "${YELLOW}STILL MISSING${NC}"
+                warn "curses module still not available after package install"
+                warn "TUI mode may not work. You can use: ./gvm setup --all"
+            fi
+        else
+            echo ""
+            warn "Skipping dependency installation"
+            warn "TUI mode may not work without curses. Use --all for non-interactive mode."
+        fi
+    fi
+
+    # Final verification
+    echo ""
+    echo -n "Verifying GVM module... "
+    export PYTHONPATH="${SCRIPT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+    if python3 -c "from gvm.cli import main" 2>/dev/null; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAILED${NC}"
+        error_exit "Cannot import GVM module. Check that src/gvm/ exists."
+    fi
+
+    echo ""
+    echo "===================="
+    success "Pre-flight check complete"
+    echo ""
+}
+
+# Main script logic
+main() {
+    # Parse first argument to check if it's 'setup'
+    local cmd="${1:-}"
+    local run_preflight=false
+
+    # Determine if we should run preflight checks
+    # Run for 'setup' command, but not if --help is requested
+    if [ "$cmd" = "setup" ]; then
+        # Check if --help or --all is in the args
+        for arg in "$@"; do
+            if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+                run_preflight=false
+                break
+            fi
+            # Set auto-install for non-interactive mode
+            if [ "$arg" = "--all" ]; then
+                export GVM_AUTO_INSTALL=1
+            fi
+        done
+        # If not help, run preflight
+        if [ "$run_preflight" = false ] && [ "$cmd" = "setup" ]; then
+            local has_help=false
+            for arg in "$@"; do
+                if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+                    has_help=true
+                    break
+                fi
+            done
+            if [ "$has_help" = false ]; then
+                run_preflight=true
+            fi
+        fi
+    fi
+
+    # Run preflight for setup command
+    if [ "$run_preflight" = true ]; then
+        preflight_setup
+    else
+        # For non-setup commands, just do basic Python check
+        if ! check_python; then
+            error_exit "python3 not found in PATH. Please install Python 3.11+"
+        fi
+
+        if ! check_python_version; then
+            error_exit "Python 3.11+ required (found $(get_python_version))"
+        fi
+    fi
+
+    # Set up PYTHONPATH and execute
+    export PYTHONPATH="${SCRIPT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+    exec python3 -m gvm "$@"
+}
+
+main "$@"

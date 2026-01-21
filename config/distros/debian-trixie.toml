@@ -1,0 +1,16 @@
+# Debian Trixie Distribution Configuration
+# Distro-specific settings for Debian 13 (Trixie).
+
+[meta]
+name = "Debian Trixie"
+codename = "trixie"
+version = "13"
+
+[apt]
+mirrors = [
+    "https://deb.debian.org/debian",
+    "https://security.debian.org/debian-security",
+]
+components = ["main", "contrib", "non-free", "non-free-firmware"]
+security_suffix = "-security"
+updates_suffix = "-updates"

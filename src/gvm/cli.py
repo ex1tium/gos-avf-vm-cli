@@ -85,6 +85,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show this help message",
     )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
+    )
 
     # Subparsers for commands
     subparsers = parser.add_subparsers(dest="command", metavar="command")
@@ -304,6 +310,7 @@ GLOBAL FLAGS:
   --config PATH         Use custom config file
   --dry-run             Simulate without making changes
   -i, --interactive     Force interactive mode (default for setup)
+  -f, --force           Force re-run even if already installed
 
 EXAMPLES:
   gvm setup                    # Interactive setup with TUI
@@ -475,6 +482,7 @@ def cmd_setup(args: argparse.Namespace, config: Config) -> int:
             config,
             verbose=args.verbose,
             dry_run=args.dry_run,
+            force=args.force,
         )
 
         # Get all available modules
@@ -560,6 +568,7 @@ def cmd_module(args: argparse.Namespace, config: Config, module_name: str) -> in
         config,
         verbose=args.verbose,
         dry_run=args.dry_run,
+        force=args.force,
     )
 
     def progress_callback(
@@ -662,6 +671,7 @@ def cmd_desktop(args: argparse.Namespace, config: Config) -> int:
         config,
         verbose=args.verbose,
         dry_run=args.dry_run,
+        force=args.force,
     )
 
     def progress_callback(

@@ -141,6 +141,7 @@ class ModuleOrchestrator:
         config: Config,
         verbose: bool = False,
         dry_run: bool = False,
+        force: bool = False,
     ) -> None:
         """Initialize the orchestrator.
 
@@ -148,10 +149,12 @@ class ModuleOrchestrator:
             config: Configuration object containing user settings and preferences
             verbose: Enable verbose output with detailed operation information
             dry_run: Simulate execution without making actual changes
+            force: Force re-run even if modules report as already installed
         """
         self.config = config
         self.verbose = verbose
         self.dry_run = dry_run
+        self.force = force
         self.modules: dict[str, Module] = {}
 
     def load_modules(self, module_names: list[str]) -> None:
@@ -435,26 +438,27 @@ class ModuleOrchestrator:
                     False,
                 )
 
-            # Step 4.1: Check if module is already installed
-            is_installed, install_msg = module.is_installed()
-            if is_installed:
-                result = ModuleResult(
-                    status=ModuleStatus.SKIPPED,
-                    message=install_msg,
-                )
-                context.results[module_name] = result
-                context.skipped.add(module_name)
-                context.completed += 1
-
-                if throttled_callback is not None:
-                    new_progress = context.completed / context.total_modules
-                    throttled_callback(
-                        new_progress,
-                        f"Skipped {module_name}: {install_msg}",
-                        None,
-                        False,
+            # Step 4.1: Check if module is already installed (skip if force=True)
+            if not self.force:
+                is_installed, install_msg = module.is_installed()
+                if is_installed:
+                    result = ModuleResult(
+                        status=ModuleStatus.SKIPPED,
+                        message=install_msg,
                     )
-                continue
+                    context.results[module_name] = result
+                    context.skipped.add(module_name)
+                    context.completed += 1
+
+                    if throttled_callback is not None:
+                        new_progress = context.completed / context.total_modules
+                        throttled_callback(
+                            new_progress,
+                            f"Skipped {module_name}: {install_msg}",
+                            None,
+                            False,
+                        )
+                    continue
 
             # Step 4.2: Check required dependencies succeeded
             failed_required_deps: list[str] = []

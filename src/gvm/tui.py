@@ -1044,5 +1044,12 @@ class CursesTUI:
                     [str(helper_script)],
                     start_new_session=True,
                 )
-            except Exception:
-                pass  # Ignore launch errors
+            except Exception as e:
+                # Restore terminal and report the error
+                print(
+                    f"Failed to launch {helper_script}: {e}",
+                    file=sys.stderr,
+                )
+                # Re-initialize curses if needed for continued operation
+                if self.stdscr:
+                    self.stdscr = curses.initscr()

@@ -98,6 +98,8 @@ def is_port_listening(port: int, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
         >>> if is_port_listening(22):
         ...     print("SSH port is open")
     """
+    # Use safe PATH to prevent PATH hijacking (includes /usr/sbin and /sbin for ss)
+    safe_env = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin"}
     try:
         # Use ss to list listening TCP sockets
         ss_result = subprocess.run(
@@ -105,6 +107,7 @@ def is_port_listening(port: int, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=safe_env,
         )
 
         if ss_result.returncode != 0:
@@ -157,7 +160,11 @@ def get_user_home(username: str, timeout: int = DEFAULT_PROBE_TIMEOUT) -> Option
         # getent passwd format: username:x:uid:gid:gecos:home:shell
         parts = result.stdout.strip().split(":")
         if len(parts) >= 6:
-            return Path(parts[5])
+            home_field = parts[5]
+            # Return None if home field is empty or whitespace-only
+            if not home_field or not home_field.strip():
+                return None
+            return Path(home_field)
 
         return None
 

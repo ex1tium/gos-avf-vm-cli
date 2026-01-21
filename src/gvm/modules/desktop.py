@@ -271,13 +271,13 @@ class DesktopModule(Module):
     def _create_desktop_files(
         self,
         desktop: DesktopConfig,
-        progress_callback: Callable[[float, str, Optional[str]], None],
+        _progress_callback: Callable[[float, str, Optional[str]], None],
     ) -> None:
         """Create configuration files from desktop templates.
 
         Args:
             desktop: Desktop configuration with file templates.
-            progress_callback: Callback to report progress.
+            _progress_callback: Callback to report progress (unused, kept for API consistency).
         """
         if not desktop.files:
             return
@@ -302,13 +302,13 @@ class DesktopModule(Module):
     def _create_helper_script(
         self,
         desktop: DesktopConfig,
-        progress_callback: Callable[[float, str, Optional[str]], None],
+        _progress_callback: Callable[[float, str, Optional[str]], None],
     ) -> None:
         """Create helper launch script for desktop environment.
 
         Args:
             desktop: Desktop configuration with session settings.
-            progress_callback: Callback to report progress.
+            _progress_callback: Callback to report progress (unused, kept for API consistency).
         """
         # Derive script name
         if desktop.session_helper_script_name:
@@ -384,7 +384,7 @@ class DesktopModule(Module):
         safe_write(script_path, content, backup=True, mode=0o755)
 
     def _check_packages_installed(self, packages: list[str]) -> bool:
-        """Check if packages are installed using dpkg.
+        """Check if packages are installed using dpkg-query.
 
         Args:
             packages: List of package names to check.
@@ -395,15 +395,15 @@ class DesktopModule(Module):
         for package in packages:
             try:
                 result = run(
-                    ["dpkg", "-l", package],
+                    ["dpkg-query", "-W", "-f=${Status}\\n", package],
                     check=False,
                     capture=True,
                     verbose=self.verbose,
                 )
-                # Check if status line shows "ii" (installed)
+                # Check for exact "install ok installed" status
                 if result.returncode != 0:
                     return False
-                if result.stdout and "ii" not in result.stdout:
+                if not result.stdout or "install ok installed" not in result.stdout:
                     return False
             except Exception:
                 return False

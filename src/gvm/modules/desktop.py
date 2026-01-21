@@ -341,7 +341,16 @@ class DesktopModule(Module):
         if desktop.environment_vars:
             lines.append("# Environment variables")
             for var in desktop.environment_vars:
-                lines.append(f"export {var}")
+                # Validate and quote environment variable assignments
+                if "=" in var:
+                    key, value = var.split("=", 1)
+                    # Properly quote the value to handle spaces and special chars
+                    # Remove existing quotes if present to normalize
+                    value = value.strip("'\"")
+                    lines.append(f"export {key}='{value}'")
+                else:
+                    # Variable reference without value (export existing var)
+                    lines.append(f"export {var}")
             lines.append("")
 
         # Build launch command

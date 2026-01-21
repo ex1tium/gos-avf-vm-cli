@@ -13,6 +13,7 @@ import curses
 import json
 import logging
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -400,11 +401,26 @@ class CursesTUI:
             elif key == ord(" "):
                 # Toggle selection
                 comp = state.components[state.cursor_pos]
-                state.selections[comp.id] = not state.selections.get(comp.id, False)
+                is_selecting = not state.selections.get(comp.id, False)
+                # Desktop entries are mutually exclusive
+                if comp.id.startswith("desktop:") and is_selecting:
+                    # Clear other desktop selections first
+                    for other in state.components:
+                        if other.id.startswith("desktop:") and other.id != comp.id:
+                            state.selections[other.id] = False
+                state.selections[comp.id] = is_selecting
             elif key in (ord("a"), ord("A")):
-                # Select all
+                # Select all (desktops are mutually exclusive - select first one only)
+                first_desktop_selected = False
                 for comp in state.components:
-                    state.selections[comp.id] = True
+                    if comp.id.startswith("desktop:"):
+                        if not first_desktop_selected:
+                            state.selections[comp.id] = True
+                            first_desktop_selected = True
+                        else:
+                            state.selections[comp.id] = False
+                    else:
+                        state.selections[comp.id] = True
             elif key in (ord("n"), ord("N")):
                 # Deselect all
                 for comp in state.components:
@@ -506,7 +522,8 @@ class CursesTUI:
 
         except Exception as e:
             self._add_log_line(f"Error: {e}")
-            return {}
+            logger.exception("Module execution failed")
+            raise
 
     def _draw_progress_screen(self) -> None:
         """Draw the progress display screen."""

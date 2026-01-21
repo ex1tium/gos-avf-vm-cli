@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import curses
 import json
+import logging
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -20,6 +21,8 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 from gvm.modules import ModuleResult, ModuleStatus, RecoveryAction, list_modules
 from gvm.orchestrator import ModuleOrchestrator
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from gvm.config import Config
@@ -156,6 +159,7 @@ class CursesTUI:
         except KeyboardInterrupt:
             return 130  # Standard exit code for Ctrl+C
         except Exception:
+            logger.exception("TUI encountered an unexpected error")
             return 1
 
     def _main_loop(self, stdscr: curses.window) -> int:

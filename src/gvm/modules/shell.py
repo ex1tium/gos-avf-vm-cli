@@ -305,7 +305,10 @@ fi
             if auto_display_enabled:
                 print(f"[DRY RUN] Would create marker file: {self.auto_display_path}")
             else:
-                print(f"[DRY RUN] Would skip creating marker file (auto_display disabled)")
+                if self.auto_display_path.exists():
+                    print(f"[DRY RUN] Would remove marker file: {self.auto_display_path}")
+                else:
+                    print(f"[DRY RUN] Would skip (auto_display disabled, marker does not exist)")
             self._report_progress(
                 progress_callback, 1.0, "Auto-display configured (dry run)"
             )
@@ -317,7 +320,18 @@ fi
             # Create empty marker file
             self.auto_display_path.touch()
             print(f"Created auto-display marker: {self.auto_display_path}")
-
-        self._report_progress(
-            progress_callback, 1.0, "Auto-display configured"
-        )
+            self._report_progress(
+                progress_callback, 1.0, "Auto-display configured (enabled)"
+            )
+        else:
+            # Remove marker file if it exists
+            if self.auto_display_path.exists():
+                self.auto_display_path.unlink()
+                print(f"Removed auto-display marker: {self.auto_display_path}")
+                self._report_progress(
+                    progress_callback, 1.0, "Auto-display configured (disabled, marker removed)"
+                )
+            else:
+                self._report_progress(
+                    progress_callback, 1.0, "Auto-display configured (disabled)"
+                )

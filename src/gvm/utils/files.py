@@ -28,10 +28,20 @@ def ensure_snippet(
     If markers already exist in the file, the function returns without
     modification. Otherwise, the snippet is appended to the file.
 
+    Note:
+        This function uses standard file I/O (open with append mode) and does
+        NOT handle elevated permissions. It is intended for user-writable files
+        only (e.g., ~/.bashrc, ~/.profile). For system files requiring root
+        access (e.g., /etc/ssh/sshd_config), use safe_write() instead, which
+        supports sudo elevation via a temporary file and move pattern.
+
     Args:
-        file_path: Path to the file to modify.
+        file_path: Path to the file to modify. Must be writable by current user.
         label: Unique label for the snippet markers.
         snippet: Content to add between markers.
+
+    Raises:
+        PermissionError: If the file is not writable by the current user.
 
     Example:
         >>> ensure_snippet(

@@ -193,7 +193,16 @@ class SSHModule(Module):
         internal_port = self.config.ssh_internal_port
 
         listen_address = ssh_settings.get("listen_address", "0.0.0.0")
-        permit_root_login = ssh_settings.get("permit_root_login", "no")
+
+        # Normalize permit_root_login: convert boolean to sshd-accepted string
+        permit_root_login_raw = ssh_settings.get("permit_root_login", "no")
+        if permit_root_login_raw is True:
+            permit_root_login = "yes"
+        elif permit_root_login_raw is False:
+            permit_root_login = "no"
+        else:
+            permit_root_login = str(permit_root_login_raw)
+
         password_auth = "yes" if ssh_settings.get("password_auth", True) else "no"
         pubkey_auth = "yes" if ssh_settings.get("pubkey_auth", True) else "no"
 

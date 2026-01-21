@@ -285,6 +285,25 @@ def configure_sshd_forwardable():
     set_or_add("PubkeyAuthentication", "yes")
     set_or_add("UsePAM", "yes")
 
+    # Security hardening warning
+    print("""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ⚠️  SSH SECURITY NOTICE                                                      ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  The current SSH configuration is permissive for initial setup convenience.  ║
+║  For production use, consider hardening the following settings in            ║
+║  /etc/ssh/sshd_config:                                                       ║
+║                                                                              ║
+║    • ListenAddress           - Restrict to specific interface (not 0.0.0.0) ║
+║    • PasswordAuthentication  - Set to 'no' after configuring SSH keys       ║
+║    • KbdInteractiveAuthentication - Set to 'no' to disable keyboard auth    ║
+║    • PubkeyAuthentication    - Keep 'yes' (required for key-based auth)     ║
+║    • UsePAM                  - Set to 'no' if PAM is not required           ║
+║                                                                              ║
+║  To reconfigure: sudo nano /etc/ssh/sshd_config && sudo systemctl restart ssh║
+╚══════════════════════════════════════════════════════════════════════════════╝
+""")
+
     new_cfg = "\n".join(text) + "\n"
     tmp = Path("/tmp/sshd_config.new")
     tmp.write_text(new_cfg)

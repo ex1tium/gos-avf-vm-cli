@@ -60,6 +60,9 @@ from gvm.modules import (
 if TYPE_CHECKING:
     from gvm.config import Config
 
+# Maximum number of retry attempts per module before failing
+DEFAULT_MAX_RETRIES = 3
+
 
 @dataclass
 class ModuleNode:
@@ -357,6 +360,7 @@ class ModuleOrchestrator:
         module_names: list[str],
         progress_callback: Optional[Callable[[float, str, Optional[str]], None]] = None,
         error_callback: Optional[Callable[[str, ModuleResult], RecoveryAction]] = None,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> dict[str, ModuleResult]:
         """Execute modules in dependency order with error recovery support.
 
@@ -379,6 +383,8 @@ class ModuleOrchestrator:
                 Must return a RecoveryAction (RETRY, SKIP, or ABORT).
                 If None, defaults to SKIP for optional auto-included modules
                 (not explicitly requested), and ABORT for requested or required modules.
+            max_retries: Maximum number of retry attempts per module before failing.
+                Defaults to DEFAULT_MAX_RETRIES (3).
 
         Returns:
             Dictionary mapping module names to their execution results
@@ -491,6 +497,7 @@ class ModuleOrchestrator:
                 continue
 
             # Step 4.3: Execute module with retry loop
+            retry_count = 0
             while True:
                 try:
                     # Create a module-specific progress callback that scales
@@ -542,6 +549,16 @@ class ModuleOrchestrator:
                             action = error_callback(module_name, result)
 
                         if action == RecoveryAction.RETRY:
+                            retry_count += 1
+                            if retry_count > max_retries:
+                                # Exceeded retry limit - treat as terminal failure
+                                context.results[module_name] = ModuleResult(
+                                    status=ModuleStatus.FAILED,
+                                    message=f"Exceeded max retries ({max_retries}): {result.message}",
+                                    details=result.details,
+                                    recovery_command=result.recovery_command,
+                                )
+                                return context.results
                             # Continue retry loop
                             continue
                         elif action == RecoveryAction.SKIP:
@@ -587,6 +604,15 @@ class ModuleOrchestrator:
                         action = error_callback(module_name, result)
 
                     if action == RecoveryAction.RETRY:
+                        retry_count += 1
+                        if retry_count > max_retries:
+                            # Exceeded retry limit - treat as terminal failure
+                            context.results[module_name] = ModuleResult(
+                                status=ModuleStatus.FAILED,
+                                message=f"Exceeded max retries ({max_retries}): {e}",
+                                recovery_command=module.get_recovery_command(),
+                            )
+                            return context.results
                         continue
                     elif action == RecoveryAction.SKIP:
                         context.results[module_name] = ModuleResult(

@@ -9,6 +9,7 @@ This module provides functions for executing shell commands with:
 
 from __future__ import annotations
 
+import os
 import subprocess
 from typing import Callable, Optional
 
@@ -60,7 +61,10 @@ def run(
         kwargs["text"] = True
 
     if env:
-        kwargs["env"] = env
+        # Merge provided env with current environment (preserving PATH, etc.)
+        merged_env = os.environ.copy()
+        merged_env.update(env)
+        kwargs["env"] = merged_env
 
     try:
         result = subprocess.run(cmd, **kwargs)
@@ -108,7 +112,10 @@ def _run_with_streaming(
     }
 
     if env:
-        kwargs["env"] = env
+        # Merge provided env with current environment (preserving PATH, etc.)
+        merged_env = os.environ.copy()
+        merged_env.update(env)
+        kwargs["env"] = merged_env
 
     output_lines: list[str] = []
 

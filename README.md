@@ -317,10 +317,6 @@ src/gvm/
 - **Replace-based merging**: Later values completely override earlier ones
 - **Desktop discovery**: Scans `config/packages/` and `~/.config/gvm/packages/`
 
-## Manual Testing
-
-For AVF VM testing procedures, see [DEPLOYMENT.md](DEPLOYMENT.md).
-
 **Important Notes:**
 
 - TUI requires an actual terminal (cannot test in CI)
@@ -354,7 +350,6 @@ gos-avf-vm-cli/
 │   └── packages/        # Desktop environment configs
 ├── tests/               # Test suite
 ├── README.md            # This file
-└── DEPLOYMENT.md        # Deployment and testing guide
 ```
 
 ## License

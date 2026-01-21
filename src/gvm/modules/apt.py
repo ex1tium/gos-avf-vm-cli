@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Callable, Optional
 from gvm.modules.base import Dependency, Module, ModuleResult, ModuleStatus
 from gvm.utils.files import safe_write
 from gvm.utils.shell import run
-from gvm.utils.system import detect_debian_codename
 
 if TYPE_CHECKING:
     from gvm.config import Config
@@ -172,11 +171,80 @@ Dpkg::Use-Pty "0";
             progress_callback, 0.2, "APT hardening complete"
         )
 
+    def _extract_urls_from_mirror_file(self) -> list[str]:
+        """Extract valid URLs from the mirror file, handling corrupted entries.
+
+        For corrupted lines (URL + suite + components), extracts just the URL.
+        For valid lines (just URL), keeps them as-is.
+
+        Returns:
+            List of unique mirror URLs extracted from the file.
+        """
+        if not self.mirrors_path.exists():
+            return []
+
+        urls: list[str] = []
+        try:
+            content = self.mirrors_path.read_text()
+            for line in content.strip().split("\n"):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                # If line contains spaces, it's corrupted - extract just the URL
+                if " " in line:
+                    url = line.split()[0]
+                else:
+                    url = line
+
+                # Validate it looks like a URL
+                if url.startswith(("http://", "https://")):
+                    if url not in urls:
+                        urls.append(url)
+        except (OSError, IOError):
+            pass
+
+        return urls
+
+    def _is_mirror_file_corrupted(self) -> bool:
+        """Check if the mirror file has corrupted format.
+
+        A corrupted mirror file contains full source entries (URL + suite + components)
+        instead of just URLs. This was caused by a bug in earlier versions.
+
+        Returns:
+            True if the file appears corrupted, False otherwise.
+        """
+        if not self.mirrors_path.exists():
+            return False
+
+        try:
+            content = self.mirrors_path.read_text()
+            for line in content.strip().split("\n"):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # A valid mirror file line should be just a URL
+                # A corrupted line contains spaces (URL + suite + components)
+                if " " in line:
+                    return True
+            return False
+        except (OSError, IOError):
+            return False
+
     def _stabilize_mirrors(
         self,
         progress_callback: Callable[[float, str, Optional[str]], None],
     ) -> None:
         """Stabilize Debian mirror configuration.
+
+        The mirror file used with mirror+file: directive should contain
+        only mirror URLs (one per line), NOT full source entries.
+        The suite and components are specified in sources.list, not here.
+
+        This method auto-repairs corrupted mirror files by extracting the
+        original URLs and restoring proper format, preserving the original
+        mirrors rather than replacing them with config defaults.
 
         Args:
             progress_callback: Callback to report progress.
@@ -198,50 +266,56 @@ Dpkg::Use-Pty "0";
             )
             return
 
-        # Build mirror list from config
-        mirrors = self.config.apt.get("mirrors", [])
-        components = self.config.apt.get("components", [])
-
-        # Guard against empty mirrors or components
-        if not mirrors or not components:
+        # Check if repair is needed
+        if not self._is_mirror_file_corrupted():
             self._report_progress(
                 progress_callback,
                 0.3,
-                "Mirror stabilization skipped",
-                "No mirrors or components configured, leaving file unchanged",
+                "Mirror file OK",
+                "No repair needed",
             )
             return
 
-        # Detect codename
-        codename = detect_debian_codename() or "trixie"
+        # Extract URLs from corrupted file to restore original mirrors
+        self._report_progress(
+            progress_callback,
+            0.27,
+            "Repairing corrupted mirror file",
+            "Extracting original URLs from malformed entries...",
+        )
 
-        components_joined = " ".join(components)
+        extracted_urls = self._extract_urls_from_mirror_file()
 
-        lines: list[str] = []
+        if not extracted_urls:
+            # Fallback to config mirrors if extraction fails
+            mirrors = self.config.apt.get("mirrors", [])
+            extracted_urls = [m for m in mirrors if "security" not in m]
 
-        for mirror in mirrors:
-            if "security" in mirror:
-                # Security mirror uses different format
-                lines.append(f"{mirror} {codename}-security {components_joined}")
-            else:
-                # Regular mirror
-                lines.append(f"{mirror} {codename} {components_joined}")
-                lines.append(f"{mirror} {codename}-updates {components_joined}")
+        if not extracted_urls:
+            self._report_progress(
+                progress_callback,
+                0.3,
+                "Mirror repair skipped",
+                "Could not determine valid mirrors",
+            )
+            return
 
-        content = "\n".join(lines) + "\n"
+        # Mirror file format: just URLs, one per line
+        content = "\n".join(extracted_urls) + "\n"
 
         if self.dry_run:
-            print(f"[DRY RUN] Would write mirrors to {self.mirrors_path}:")
-            print(content)
+            print(f"[DRY RUN] Would repair mirrors file {self.mirrors_path}:")
+            print(f"  Extracted URLs: {extracted_urls}")
+            print(f"  New content:\n{content}")
             self._report_progress(
-                progress_callback, 0.3, "Mirror stabilization complete (dry run)"
+                progress_callback, 0.3, "Mirror repair complete (dry run)"
             )
             return
 
         safe_write(self.mirrors_path, content, backup=True)
 
         self._report_progress(
-            progress_callback, 0.3, "Mirror stabilization complete"
+            progress_callback, 0.3, "Mirror file repaired"
         )
 
     def _clean_apt(

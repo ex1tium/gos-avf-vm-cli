@@ -38,8 +38,8 @@ def detect_debian_codename() -> Optional[str]:
     except (IOError, PermissionError):
         return None
 
-    # Look for VERSION_CODENAME=<codename>
-    match = re.search(r"VERSION_CODENAME=(\w+)", content)
+    # Look for VERSION_CODENAME=<codename> (may be quoted or unquoted)
+    match = re.search(r'VERSION_CODENAME="?(\w+)"?', content)
     if match:
         return match.group(1)
 

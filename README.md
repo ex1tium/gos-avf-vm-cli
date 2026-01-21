@@ -14,7 +14,7 @@ Automated setup tool for configuring Debian Trixie on GrapheneOS Android Virtual
 ## Target Environment
 
 - **Platform**: Debian Trixie running on GrapheneOS AVF
-- **Python**: 3.13+ (uses `tomllib` from standard library)
+- **Python**: 3.11+ (uses `tomllib` from standard library)
 - **Terminal**: Any terminal supporting curses (for TUI mode)
 
 ## Quick Start
@@ -263,7 +263,7 @@ src/gvm/
 
 ### Configuration System
 
-- **TOML-based**: Uses Python 3.13's built-in `tomllib`
+- **TOML-based**: Uses Python 3.11+'s built-in `tomllib`
 - **Replace-based merging**: Later values completely override earlier ones
 - **Desktop discovery**: Scans `config/packages/` and `~/.config/gvm/packages/`
 

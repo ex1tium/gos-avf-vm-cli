@@ -587,7 +587,7 @@ class CursesTUI:
 
             y += 1
 
-    def _draw_detail_pane(self, start_y: int, height: int, width: int) -> None:
+    def _draw_detail_pane(self, start_y: int, _height: int, width: int) -> None:
         """Draw the current operation detail pane."""
         if self.stdscr is None:
             return

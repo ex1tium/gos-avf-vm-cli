@@ -550,7 +550,7 @@ def cmd_desktop(args: argparse.Namespace, config: Config) -> int:
                 desc = desc[:47] + "..."
             print(f"{name:<20} {desc:<50}")
 
-        print(f"\nUse 'gvm desktop <name>' to install a desktop environment.")
+        print("\nUse 'gvm desktop <name>' to install a desktop environment.")
         return 0
 
     # Install specific desktop

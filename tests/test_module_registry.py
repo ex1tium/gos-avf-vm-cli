@@ -110,7 +110,7 @@ class TestModuleAbstractBase(unittest.TestCase):
             def is_installed(self) -> tuple[bool, str]:
                 return (False, "Not installed")
 
-            def run(self, progress_callback) -> ModuleResult:
+            def run(self, _progress_callback) -> ModuleResult:
                 return ModuleResult(
                     status=ModuleStatus.SUCCESS,
                     message="Done",
@@ -144,7 +144,7 @@ class TestDependenciesImmutability(unittest.TestCase):
             def is_installed(self) -> tuple[bool, str]:
                 return (False, "")
 
-            def run(self, progress_callback) -> ModuleResult:
+            def run(self, _progress_callback) -> ModuleResult:
                 return ModuleResult(status=ModuleStatus.SUCCESS, message="")
 
         class ModuleB(Module):
@@ -155,7 +155,7 @@ class TestDependenciesImmutability(unittest.TestCase):
             def is_installed(self) -> tuple[bool, str]:
                 return (False, "")
 
-            def run(self, progress_callback) -> ModuleResult:
+            def run(self, _progress_callback) -> ModuleResult:
                 return ModuleResult(status=ModuleStatus.SUCCESS, message="")
 
         # Verify they have different dependencies

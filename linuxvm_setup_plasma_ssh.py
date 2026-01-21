@@ -144,9 +144,7 @@ Dpkg::Use-Pty "0";
 """
     print("\n[+] Hardening APT config...")
     run(["sudo", "mkdir", "-p", "/etc/apt/apt.conf.d"], check=True)
-    run(["sudo", "tee", str(conf)], check=True, capture=False, env=None).returncode
-    # tee needs stdin; easiest: use shell for tee, but we avoid shell.
-    # We'll write to a temp and move it with sudo.
+    # Write to temp file and copy with sudo (avoids shell piping)
     tmp = Path("/tmp/99-linuxvm-robust")
     tmp.write_text(content)
     run(["sudo", "cp", str(tmp), str(conf)], check=True)
@@ -313,7 +311,7 @@ def configure_sshd_forwardable():
     run(["sudo", "systemctl", "restart", "ssh"], check=True)
 
     # Show listening ports
-    run(["bash", "-lc", f"ss -ltnp | grep -E ':(%d|%d)\\b' || true" % (SSH_FORWARD_PORT, SSH_INTERNAL_PORT)], check=False)
+    run(["bash", "-lc", f"ss -ltnp | grep -E ':({SSH_FORWARD_PORT}|{SSH_INTERNAL_PORT})\\b' || true"], check=False)
 
     print(f"""
 [OK] SSH server configured.
@@ -427,7 +425,7 @@ def create_gui_helpers():
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     start_gui = bin_dir / "start-gui"
-    start_gui.write_text(f"""#!/usr/bin/env bash
+    start_gui.write_text("""#!/usr/bin/env bash
 set -euo pipefail
 
 # GrapheneOS Linux VM helper:
@@ -447,7 +445,7 @@ echo "[linuxvm] Try: chromium --ozone-platform=wayland"
     start_gui.chmod(0o755)
 
     start_plasma = bin_dir / "start-plasma-mobile"
-    start_plasma.write_text(f"""#!/usr/bin/env bash
+    start_plasma.write_text("""#!/usr/bin/env bash
 set -euo pipefail
 
 echo "[linuxvm] Starting display integration..."
@@ -584,7 +582,7 @@ def main():
             install_plasma_mobile_minimal()
             configure_plasma_wayland_env()
             create_gui_helpers()
-        except SystemExit as e:
+        except SystemExit:
             print("\n[!] Plasma install failed.")
             print("    This usually happens due to partial/corrupt downloads or the Terminal being paused.")
             print("    Recovery steps:")

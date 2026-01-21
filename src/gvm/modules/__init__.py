@@ -44,18 +44,15 @@ AVAILABLE_MODULES: dict[str, type[Module]] = {
 }
 
 __all__ = [
-    # Registry
     "AVAILABLE_MODULES",
-    "get_module_class",
-    "list_modules",
-    # Utility
-    "normalize_module_name",
-    # Re-exported from base
     "Dependency",
     "Module",
     "ModuleResult",
     "ModuleStatus",
     "RecoveryAction",
+    "get_module_class",
+    "list_modules",
+    "normalize_module_name",
 ]
 
 

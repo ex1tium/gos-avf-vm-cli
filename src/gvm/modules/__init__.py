@@ -26,18 +26,21 @@ from gvm.modules.base import (
     ModuleStatus,
     RecoveryAction,
 )
+from gvm.modules.desktop import DesktopModule
+from gvm.modules.gui import GUIModule
+from gvm.modules.shell import ShellModule
+from gvm.modules.ssh import SSHModule
 
 if TYPE_CHECKING:
     from typing import Optional
 
 # Registry of available modules, mapping normalized names to module classes.
-# Add new modules here as they are implemented:
-#   "ssh": SSHModule,
-#   "desktop": DesktopModule,
-#   "shell": ShellModule,
-#   "gui": GUIModule,
 AVAILABLE_MODULES: dict[str, type[Module]] = {
     "apt": APTModule,
+    "desktop": DesktopModule,
+    "ssh": SSHModule,
+    "shell": ShellModule,
+    "gui": GUIModule,
 }
 
 __all__ = [

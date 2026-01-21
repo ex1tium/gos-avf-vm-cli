@@ -459,6 +459,16 @@ class CursesTUI:
         ) -> None:
             self.progress_state.current_percent = percent
             self.progress_state.current_message = message
+
+            # Extract current module from message format "[module_name] ..."
+            # or "Processing module: module_name"
+            if message.startswith("[") and "]" in message:
+                module_name = message[1:message.index("]")]
+                self.progress_state.current_module = module_name
+            elif message.startswith("Processing module: "):
+                module_name = message[len("Processing module: "):]
+                self.progress_state.current_module = module_name
+
             if operation:
                 self.progress_state.current_operation = operation
                 if self.verbose:
@@ -558,7 +568,7 @@ class CursesTUI:
             elif mod in state.skipped:
                 indicator = "-"
                 attr = curses.A_DIM
-            elif state.current_message and mod in state.current_message:
+            elif mod == state.current_module:
                 indicator = "▶"
                 attr = curses.color_pair(3) if curses.has_colors() else curses.A_REVERSE
             else:

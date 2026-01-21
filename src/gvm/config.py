@@ -264,8 +264,8 @@ class Config:
         # Start with deep copy of embedded defaults to prevent shared references
         config_data = copy.deepcopy(EMBEDDED_DEFAULTS)
 
-        # Repository config path (relative to this module)
-        repo_config_path = Path(__file__).parent.parent / "config" / "default.toml"
+        # Repository config path (relative to this module in src/gvm/)
+        repo_config_path = Path(__file__).parent.parent.parent / "config" / "default.toml"
         if repo_config_path.exists():
             repo_config = _load_toml(repo_config_path)
             config_data = _merge_configs(config_data, repo_config)
@@ -299,7 +299,7 @@ class Config:
         desktops: dict[str, DesktopConfig] = {}
 
         # Scan repository packages directory
-        repo_packages_dir = Path(__file__).parent.parent / "config" / "packages"
+        repo_packages_dir = Path(__file__).parent.parent.parent / "config" / "packages"
         desktops = self._scan_desktop_directory(repo_packages_dir, desktops)
 
         # Scan user packages directory (can override repository configs)

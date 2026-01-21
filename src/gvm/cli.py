@@ -637,8 +637,8 @@ def cmd_config(args: argparse.Namespace, config: Config) -> int:
                 print("Aborted.")
                 return 0
 
-        # Copy from default config
-        default_config_path = Path(__file__).parent.parent / "config" / "default.toml"
+        # Copy from default config (module is in src/gvm/)
+        default_config_path = Path(__file__).parent.parent.parent / "config" / "default.toml"
 
         if not default_config_path.exists():
             print(f"Error: Default config not found at {default_config_path}")
@@ -744,6 +744,28 @@ def cmd_fix(args: argparse.Namespace, config: Config) -> int:
 
     import subprocess
 
+    # Default timeout for recovery commands (in seconds)
+    CMD_TIMEOUT = 120
+
+    def run_recovery_command(
+        cmd: list[str], desc: str, verbose: bool, timeout: int = CMD_TIMEOUT
+    ) -> tuple[bool, str]:
+        """Run a recovery command with timeout handling.
+
+        Returns:
+            Tuple of (success, message) where success is True if command completed
+            successfully, and message contains any warning/error information.
+        """
+        try:
+            result = subprocess.run(
+                cmd, capture_output=not verbose, timeout=timeout
+            )
+            if result.returncode != 0:
+                return (False, f"returned non-zero exit code ({result.returncode})")
+            return (True, "")
+        except subprocess.TimeoutExpired:
+            return (False, f"timed out after {timeout} seconds")
+
     if target == "apt":
         print("Running APT recovery...")
         commands = [
@@ -758,9 +780,9 @@ def cmd_fix(args: argparse.Namespace, config: Config) -> int:
             if args.dry_run:
                 print(f"    [DRY RUN] Would run: {' '.join(cmd)}")
             else:
-                result = subprocess.run(cmd, capture_output=not args.verbose)
-                if result.returncode != 0:
-                    print(f"    Warning: {desc} returned non-zero exit code")
+                success, message = run_recovery_command(cmd, desc, args.verbose)
+                if not success:
+                    print(f"    Warning: {desc} {message}")
 
         print("APT recovery complete.")
         return 0
@@ -776,11 +798,13 @@ def cmd_fix(args: argparse.Namespace, config: Config) -> int:
             if args.dry_run:
                 print(f"    [DRY RUN] Would run: {' '.join(cmd)}")
             else:
-                result = subprocess.run(cmd, capture_output=not args.verbose)
-                if result.returncode != 0:
+                success, message = run_recovery_command(cmd, desc, args.verbose)
+                if not success:
                     # Try sshd instead
                     alt_cmd = ["sudo", "systemctl", "restart", "sshd"]
-                    result = subprocess.run(alt_cmd, capture_output=not args.verbose)
+                    success, message = run_recovery_command(alt_cmd, desc, args.verbose)
+                    if not success:
+                        print(f"    Warning: {desc} {message}")
 
         print("SSH recovery complete.")
         return 0

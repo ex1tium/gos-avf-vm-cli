@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# GVM - GrapheneOS Debian VM Setup Tool
+#
+# Root-level wrapper script for convenient CLI access.
+# This script ensures the gvm Python module can be executed from the repository root.
+#
+# Usage:
+#   ./gvm --help              Show help
+#   ./gvm setup               Interactive TUI setup
+#   ./gvm setup --all         Non-interactive full setup
+#   ./gvm apt                 Configure APT
+#   ./gvm ssh                 Configure SSH
+#   ./gvm desktop list        List available desktops
+#   ./gvm info                Show system information
+#
+# Alternative invocation (equivalent):
+#   python3 -m gvm <command>
+#
+
+set -euo pipefail
+
+# Determine the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Add the src directory to PYTHONPATH so Python can find the gvm module
+export PYTHONPATH="${SCRIPT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+
+# Execute the gvm Python module with all passed arguments
+exec python3 -m gvm "$@"

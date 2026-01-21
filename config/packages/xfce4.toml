@@ -1,35 +1,44 @@
 # XFCE4 Desktop Configuration
-# Lightweight XFCE4 desktop environment as an alternative option.
+# Lightweight XFCE4 desktop environment for GrapheneOS AVF VM.
+#
+# XFCE 4.20+ has experimental Wayland support using labwc or wayfire compositors.
+# On AVF, we use cage as a minimal Wayland compositor to run XFCE4.
 
 [meta]
 name = "XFCE4"
-description = "Lightweight XFCE4 desktop environment"
+description = "Lightweight XFCE4 desktop (via cage compositor)"
 type = "desktop"
 
 [packages]
 core = [
     "xfce4",
     "xfce4-goodies",
+    "cage",
 ]
 optional = [
     "firefox-esr",
     "thunar",
     "xfce4-terminal",
 ]
-wayland_helpers = []
+wayland_helpers = [
+    "xwayland",
+]
 user_packages = []
 
 [environment]
-# XFCE4 traditionally runs on X11. These vars are minimal defaults.
-# For Wayland compositors (e.g., labwc), add Wayland-specific vars to a custom config.
+# XFCE4 runs inside cage compositor which handles Wayland display
 vars = [
-    "XDG_SESSION_TYPE=x11",
+    "XDG_SESSION_TYPE=wayland",
+    "GDK_BACKEND=x11",
+    "WLR_NO_HARDWARE_CURSORS=1",
 ]
 
 [files]
 
 [session]
-start_command = "dbus-run-session startxfce4"
-fallback_command = "dbus-run-session xfce4-session"
-requires_dbus_session = false
+# Use cage compositor to run xfce4-session
+# cage is a minimal Wayland compositor that runs a single application fullscreen
+start_command = "cage -- xfce4-session"
+fallback_command = "cage -- startxfce4"
+requires_dbus_session = true
 helper_script_name = "start-xfce4"

@@ -512,8 +512,51 @@ def cmd_setup(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.all:
-        # Non-interactive full setup
+        # Non-interactive full setup - but prompt for desktop choice
         print("Running non-interactive full setup...")
+
+        # Prompt for desktop selection if multiple available
+        desktops = config.discover_desktops()
+        if desktops and len(desktops) > 1:
+            print("\nAvailable desktop environments:")
+            desktop_list = sorted(desktops.keys())
+            for i, name in enumerate(desktop_list, 1):
+                desc = desktops[name].description or ""
+                print(f"  {i}. {name} - {desc}")
+            print(f"  {len(desktop_list) + 1}. Install all desktops")
+            print(f"  {len(desktop_list) + 2}. Skip desktop installation")
+
+            while True:
+                try:
+                    choice = input("\nSelect desktop to install [1]: ").strip()
+                    if not choice:
+                        choice = "1"
+                    choice_num = int(choice)
+                    if 1 <= choice_num <= len(desktop_list):
+                        config.selected_desktop = desktop_list[choice_num - 1]
+                        print(f"Selected: {config.selected_desktop}")
+                        break
+                    elif choice_num == len(desktop_list) + 1:
+                        config.selected_desktop = None  # Install all
+                        print("Installing all desktops")
+                        break
+                    elif choice_num == len(desktop_list) + 2:
+                        # Remove desktop from modules list later
+                        config.selected_desktop = "__skip__"
+                        print("Skipping desktop installation")
+                        break
+                    else:
+                        print(f"Please enter a number between 1 and {len(desktop_list) + 2}")
+                except ValueError:
+                    print("Please enter a valid number")
+                except (EOFError, KeyboardInterrupt):
+                    print("\nAborted.")
+                    return 1
+        elif desktops and len(desktops) == 1:
+            # Only one desktop available, auto-select it
+            config.selected_desktop = list(desktops.keys())[0]
+            print(f"Auto-selecting only available desktop: {config.selected_desktop}")
+
         orchestrator = ModuleOrchestrator(
             config,
             verbose=args.verbose,
@@ -523,6 +566,11 @@ def cmd_setup(args: argparse.Namespace, config: Config) -> int:
 
         # Get all available modules
         modules = list_modules()
+
+        # Remove desktop module if user chose to skip
+        if config.selected_desktop == "__skip__":
+            modules = [m for m in modules if m != "desktop"]
+            config.selected_desktop = None
 
         if not modules:
             print("No modules available.")
@@ -688,10 +736,17 @@ def cmd_desktop(args: argparse.Namespace, config: Config) -> int:
     # Install specific desktop
     desktops = config.discover_desktops()
 
-    if target not in desktops:
+    # Resolve desktop name with fuzzy matching
+    from gvm.start import resolve_desktop_name
+
+    resolved = resolve_desktop_name(config, target)
+    if resolved is None:
         print(f"Error: Desktop '{target}' not found.")
-        print(f"Available desktops: {', '.join(sorted(desktops.keys()))}")
+        print("Available desktops:")
+        for name in sorted(desktops.keys()):
+            print(f"  {name.lower().replace(' ', '-')} ({name})")
         return 1
+    target = resolved
 
     # Check if desktop module exists
     if get_module_class("desktop") is None:

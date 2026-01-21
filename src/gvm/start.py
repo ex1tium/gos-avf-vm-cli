@@ -17,6 +17,56 @@ if TYPE_CHECKING:
     from gvm.config import Config
 
 
+def resolve_desktop_name(config: Config, user_input: str) -> Optional[str]:
+    """Resolve user input to actual desktop name with fuzzy matching.
+
+    Supports:
+    - Exact match (case-insensitive)
+    - Partial match (e.g., "plasma" matches "Plasma Mobile")
+    - Common aliases
+
+    Args:
+        config: Configuration object.
+        user_input: User-provided desktop name.
+
+    Returns:
+        Actual desktop name from config, or None if not found.
+    """
+    desktops = config.discover_desktops()
+    user_lower = user_input.lower()
+
+    # Try exact match (case-insensitive)
+    for name in desktops.keys():
+        if name.lower() == user_lower:
+            return name
+
+    # Try partial match - user input is prefix or substring
+    matches = []
+    for name in desktops.keys():
+        name_lower = name.lower()
+        # Check if user input is a prefix or the name starts with it
+        if name_lower.startswith(user_lower):
+            matches.append(name)
+        # Check if any word in the name starts with user input
+        elif any(word.startswith(user_lower) for word in name_lower.split()):
+            matches.append(name)
+
+    # If exactly one match, return it
+    if len(matches) == 1:
+        return matches[0]
+
+    # If multiple matches, try to find the best one
+    if len(matches) > 1:
+        # Prefer exact word match
+        for name in matches:
+            if user_lower in name.lower().split():
+                return name
+        # Return first match if no exact word match
+        return matches[0]
+
+    return None
+
+
 def check_wayland_ready(timeout: int = 10) -> bool:
     """Check if Wayland compositor is ready.
 
@@ -292,10 +342,21 @@ def cmd_start(
 
             print("Multiple desktops installed. Please specify which to start:")
             for name in sorted(installed):
-                print(f"  gvm start {name}")
+                print(f"  gvm start {name.lower().replace(' ', '-')}")
             return 1
 
         if verbose:
             print(f"Starting default desktop: {desktop_name}")
+    else:
+        # Resolve user input to actual desktop name
+        resolved = resolve_desktop_name(config, desktop_name)
+        if resolved is None:
+            desktops = config.discover_desktops()
+            print(f"Error: Desktop '{desktop_name}' not found")
+            print("Available desktops:")
+            for name in sorted(desktops.keys()):
+                print(f"  {name.lower().replace(' ', '-')} ({name})")
+            return 1
+        desktop_name = resolved
 
     return launch_desktop(config, desktop_name, verbose)

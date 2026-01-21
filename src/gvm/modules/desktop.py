@@ -361,11 +361,23 @@ class DesktopModule(Module):
             "    exit 1",
             "fi",
             "",
+            "# Clear potentially conflicting desktop environment variables",
+            "# This prevents cross-contamination when multiple DEs are installed",
+            "unset GDK_BACKEND",
+            "unset QT_QPA_PLATFORM",
+            "unset QT_WAYLAND_DISABLE_WINDOWDECORATION",
+            "unset SDL_VIDEODRIVER",
+            "unset CLUTTER_BACKEND",
+            "unset ECORE_EVAS_ENGINE",
+            "unset MOZ_ENABLE_WAYLAND",
+            "unset WLR_NO_HARDWARE_CURSORS",
+            "unset LIBGL_ALWAYS_INDIRECT",
+            "",
         ]
 
         # Export environment variables
         if desktop.environment_vars:
-            lines.append("# Environment variables")
+            lines.append("# Environment variables for this desktop")
             # Regex for valid shell identifier: starts with letter or underscore,
             # followed by alphanumerics or underscores
             valid_key_pattern = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

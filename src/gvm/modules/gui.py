@@ -361,7 +361,19 @@ if ! check_display_ready; then
     exit 1
 fi
 
-# Set environment variables
+# Clear potentially conflicting desktop environment variables
+# This prevents cross-contamination when multiple DEs are installed
+unset GDK_BACKEND
+unset QT_QPA_PLATFORM
+unset QT_WAYLAND_DISABLE_WINDOWDECORATION
+unset SDL_VIDEODRIVER
+unset CLUTTER_BACKEND
+unset ECORE_EVAS_ENGINE
+unset MOZ_ENABLE_WAYLAND
+unset WLR_NO_HARDWARE_CURSORS
+unset LIBGL_ALWAYS_INDIRECT
+
+# Set environment variables for this desktop
 '''
             # Add environment variables if defined
             # Regex for valid shell identifier: starts with letter or underscore,

@@ -8,6 +8,7 @@ This module provides functions for:
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -173,8 +174,6 @@ def get_display_server() -> Optional[str]:
         >>> if server == "wayland":
         ...     print("Running on Wayland")
     """
-    import os
-
     # Check for Wayland
     if os.environ.get("WAYLAND_DISPLAY"):
         return "wayland"

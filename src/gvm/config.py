@@ -219,6 +219,11 @@ class Config:
     features: dict = field(default_factory=dict)
     banner: dict = field(default_factory=dict)
 
+    # Internal cache for discovered desktops (not serialized)
+    _desktop_cache: Optional[dict[str, "DesktopConfig"]] = field(
+        default=None, repr=False, compare=False
+    )
+
     @classmethod
     def from_dict(cls, data: dict) -> Config:
         """Create a Config instance from a dictionary.
@@ -287,15 +292,24 @@ class Config:
 
         return cls.from_dict(config_data)
 
-    def discover_desktops(self) -> dict[str, DesktopConfig]:
+    def discover_desktops(self, force_refresh: bool = False) -> dict[str, DesktopConfig]:
         """Scan and load desktop TOML files from repository and user directories.
 
         Desktop files are identified by having 'meta.type == "desktop"' in their
         TOML content. User configs can override repository configs with the same name.
 
+        Results are cached for performance. Use force_refresh=True to bypass cache.
+
+        Args:
+            force_refresh: If True, bypass cache and re-scan directories.
+
         Returns:
             Dictionary mapping desktop names to DesktopConfig instances.
         """
+        # Return cached result if available
+        if self._desktop_cache is not None and not force_refresh:
+            return self._desktop_cache
+
         desktops: dict[str, DesktopConfig] = {}
 
         # Scan repository packages directory
@@ -305,6 +319,9 @@ class Config:
         # Scan user packages directory (can override repository configs)
         user_packages_dir = Path.home() / ".config" / "gvm" / "packages"
         desktops = self._scan_desktop_directory(user_packages_dir, desktops)
+
+        # Cache the result
+        self._desktop_cache = desktops
 
         return desktops
 

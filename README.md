@@ -24,12 +24,25 @@ Automated setup tool for configuring Debian Trixie on GrapheneOS Android Virtual
 git clone https://github.com/ex1tium/grapheneos-avf-debian-setup-scripts.git
 cd grapheneos-avf-debian-setup-scripts
 
-# Run interactive setup (TUI)
+# Run setup (auto-detects and installs missing dependencies)
 ./gvm setup
 
 # Or run non-interactive full setup
 ./gvm setup --all
 ```
+
+The `setup` command automatically:
+- Checks Python version (requires 3.11+)
+- Verifies required modules (tomllib, curses)
+- Offers to install missing system packages
+- Proceeds to TUI or non-interactive setup
+
+### Requirements
+
+- **Python 3.11+** (uses `tomllib` from standard library)
+- **curses support** (for TUI mode - auto-installed if missing)
+
+> **Note:** If git doesn't preserve executable permissions, run: `chmod +x gvm`
 
 ## Installation Methods
 

@@ -15,15 +15,12 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from gvm.config import Config
 from gvm.modules import ModuleResult, ModuleStatus, get_module_class, list_modules
 from gvm.orchestrator import ModuleOrchestrator
 from gvm.utils.system import detect_debian_codename, is_port_listening, is_service_running
-
-if TYPE_CHECKING:
-    pass
 
 
 def check_curses_available() -> bool:

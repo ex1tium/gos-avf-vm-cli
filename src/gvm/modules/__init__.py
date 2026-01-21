@@ -48,6 +48,8 @@ __all__ = [
     "AVAILABLE_MODULES",
     "get_module_class",
     "list_modules",
+    # Utility
+    "normalize_module_name",
     # Re-exported from base
     "Dependency",
     "Module",
@@ -57,7 +59,7 @@ __all__ = [
 ]
 
 
-def _normalize_module_name(name: str) -> str:
+def normalize_module_name(name: str) -> str:
     """Normalize a module name for consistent lookup.
 
     Converts the name to lowercase and strips whitespace to ensure
@@ -88,7 +90,7 @@ def get_module_class(name: str) -> Optional[type[Module]]:
         >>> if module_cls:
         ...     module = module_cls(config)
     """
-    normalized = _normalize_module_name(name)
+    normalized = normalize_module_name(name)
     return AVAILABLE_MODULES.get(normalized)
 
 

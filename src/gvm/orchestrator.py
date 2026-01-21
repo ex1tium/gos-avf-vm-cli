@@ -54,25 +54,11 @@ from gvm.modules import (
     RecoveryAction,
     get_module_class,
     list_modules,
+    normalize_module_name,
 )
 
 if TYPE_CHECKING:
     from gvm.config import Config
-
-
-def _normalize_module_name(name: str) -> str:
-    """Normalize a module name for consistent lookup.
-
-    Converts the name to lowercase and strips whitespace to ensure
-    consistent matching regardless of how the name is provided.
-
-    Args:
-        name: The module name to normalize
-
-    Returns:
-        Normalized module name string
-    """
-    return name.lower().strip()
 
 
 @dataclass
@@ -183,7 +169,7 @@ class ModuleOrchestrator:
             # Modules are now available in orchestrator.modules
         """
         for name in module_names:
-            normalized_name = _normalize_module_name(name)
+            normalized_name = normalize_module_name(name)
 
             if normalized_name in self.modules:
                 # Already loaded, skip
@@ -231,7 +217,7 @@ class ModuleOrchestrator:
             # Returns: (["apt", "desktop"], set())
         """
         # Normalize requested module names
-        normalized_requested = [_normalize_module_name(m) for m in requested_modules]
+        normalized_requested = [normalize_module_name(m) for m in requested_modules]
         requested_set = set(normalized_requested)
 
         # Build dependency graph
@@ -270,7 +256,7 @@ class ModuleOrchestrator:
 
             # Process dependencies
             for dep in module.dependencies:
-                dep_name = _normalize_module_name(dep.module_name)
+                dep_name = normalize_module_name(dep.module_name)
                 all_modules.add(dep_name)
 
                 # Track if this dependency is optional and was not explicitly requested
@@ -471,7 +457,7 @@ class ModuleOrchestrator:
                     # Optional dependencies don't block execution
                     continue
 
-                dep_name = _normalize_module_name(dep.module_name)
+                dep_name = normalize_module_name(dep.module_name)
                 dep_result = context.results.get(dep_name)
 
                 if dep_result is None:
@@ -686,7 +672,7 @@ class ModuleOrchestrator:
         invalid_names: list[str] = []
 
         for name in module_names:
-            normalized_name = _normalize_module_name(name)
+            normalized_name = normalize_module_name(name)
             if get_module_class(normalized_name) is None:
                 invalid_names.append(name)
 

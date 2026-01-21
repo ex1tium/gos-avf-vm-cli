@@ -112,6 +112,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show help for setup command",
     )
+    setup_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
+    )
 
     # APT command
     apt_parser = subparsers.add_parser(
@@ -125,6 +131,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show help for apt command",
     )
+    apt_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
+    )
 
     # SSH command
     ssh_parser = subparsers.add_parser(
@@ -137,6 +149,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--help",
         action="store_true",
         help="Show help for ssh command",
+    )
+    ssh_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
     )
 
     # Desktop command
@@ -157,6 +175,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show help for desktop command",
     )
+    desktop_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
+    )
 
     # Shell command
     shell_parser = subparsers.add_parser(
@@ -170,6 +194,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show help for shell command",
     )
+    shell_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
+    )
 
     # GUI command
     gui_parser = subparsers.add_parser(
@@ -182,6 +212,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--help",
         action="store_true",
         help="Show help for gui command",
+    )
+    gui_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-run even if already installed",
     )
 
     # Start command

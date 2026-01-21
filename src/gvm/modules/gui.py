@@ -113,7 +113,7 @@ class GUIModule(Module):
                 details=traceback.format_exc(),
                 recovery_command=self.get_recovery_command(),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return ModuleResult(
                 status=ModuleStatus.FAILED,
                 message=str(e),
@@ -294,14 +294,21 @@ echo ""
             )
             return
 
+        created_count = 0
+
         if self.dry_run:
             for desktop_name, desktop in desktops.items():
+                session_cmd = desktop.session_start_command
+                if not session_cmd:
+                    print(f"[DRY RUN] Skipping {desktop_name}: no session_start_command defined")
+                    continue
                 script_filename = self._derive_script_filename(desktop)
                 script_path = self.local_bin_path / script_filename
                 print(f"[DRY RUN] Would create script: {script_path}")
-                print(f"  Session command: {desktop.session_start_command or 'N/A'}")
+                print(f"  Session command: {session_cmd}")
+                created_count += 1
             self._report_progress(
-                progress_callback, 0.9, "Desktop scripts created (dry run)"
+                progress_callback, 0.9, f"Desktop scripts created (dry run): {created_count}"
             )
             return
 
@@ -361,9 +368,10 @@ exec {dbus_wrapper}{session_cmd}
             script_path.write_text(content)
             script_path.chmod(0o755)
             print(f"Created script: {script_path}")
+            created_count += 1
 
         self._report_progress(
-            progress_callback, 0.9, f"Created {len(desktops)} desktop launcher(s)"
+            progress_callback, 0.9, f"Created {created_count} desktop launcher(s)"
         )
 
     def _add_local_bin_to_path(

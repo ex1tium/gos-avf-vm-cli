@@ -591,10 +591,11 @@ class TestDesktopModuleIsInstalled(unittest.TestCase):
         )
         mock_discover.return_value = {"Test": mock_desktop}
 
-        # Mock dpkg to return success with "ii" status
+        # Mock dpkg-query to return success with "install ok installed" status
+        # This matches what _check_packages_installed expects
         mock_result = MagicMock()
         mock_result.returncode = 0
-        mock_result.stdout = "ii  test-pkg  1.0  amd64  Test package"
+        mock_result.stdout = "install ok installed"
         mock_run.return_value = mock_result
 
         config = Config.load()

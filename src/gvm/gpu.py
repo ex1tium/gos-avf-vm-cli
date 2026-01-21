@@ -21,6 +21,7 @@ def check_virgl_status() -> tuple[bool, str]:
     """
     indicators = []
     gpu_signals = []  # Track GPU-specific positive signals
+    software_rendering = False  # Track if software rendering is detected
 
     # Check for DRI devices
     dri_path = Path("/dev/dri")
@@ -46,6 +47,7 @@ def check_virgl_status() -> tuple[bool, str]:
                 gpu_signals.append(True)
             else:
                 indicators.append("✗ Software rendering detected")
+                software_rendering = True
         else:
             indicators.append("⚠ glxinfo failed to run")
     except FileNotFoundError:
@@ -60,8 +62,8 @@ def check_virgl_status() -> tuple[bool, str]:
     else:
         indicators.append("✗ Wayland display not active")
 
-    # is_active based only on GPU-specific signals
-    is_active = len(gpu_signals) > 0
+    # is_active based only on GPU-specific signals, but software rendering overrides
+    is_active = len(gpu_signals) > 0 and not software_rendering
     message = "\n".join(indicators)
 
     return is_active, message

@@ -62,8 +62,8 @@ When you're ready to use a desktop environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ex1tium/grapheneos-avf-debian-setup-scripts.git
-cd grapheneos-avf-debian-setup-scripts
+git clone https://github.com/ex1tium/gos-avf-vm-cli.git
+cd gos-avf-vm-cli
 
 # Run setup (auto-detects and installs missing dependencies)
 ./gvm setup
@@ -345,7 +345,7 @@ python -m pytest tests/ --cov=gvm --cov-report=html
 ### Project Structure
 
 ```text
-grapheneos-avf-debian-setup-scripts/
+gos-avf-vm-cli/
 ├── gvm                  # Root-level executable wrapper
 ├── src/
 │   └── gvm/             # Python package
@@ -359,8 +359,14 @@ grapheneos-avf-debian-setup-scripts/
 
 ## License
 
-[Add your license information here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-[Add contributing guidelines here]
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request

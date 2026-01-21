@@ -7,6 +7,7 @@ module for package installation.
 
 from __future__ import annotations
 
+import shlex
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
@@ -230,12 +231,16 @@ class ShellModule(Module):
         show_ssh_note = banner_settings.get("show_ssh_note", True)
         ssh_note = banner_settings.get("ssh_note", "Note: GrapheneOS Terminal Port Control will NOT expose port 22.")
 
+        # Shell-escape user-provided strings to prevent injection
+        title_escaped = shlex.quote(title)
+        ssh_note_escaped = shlex.quote(ssh_note)
+
         # Build SSH note section if enabled
         ssh_note_section = ""
         if show_ssh_note:
             ssh_note_section = f'''
     echo ""
-    echo "{ssh_note}"'''
+    echo {ssh_note_escaped}'''
 
         content = f'''#!/bin/bash
 # GVM Login Banner Script
@@ -251,7 +256,7 @@ esac
 display_banner() {{
     echo ""
     echo "====================================="
-    echo "  {title}"
+    echo "  "{title_escaped}
     echo "====================================="
     echo ""
     echo "  Hostname:  $(hostname)"

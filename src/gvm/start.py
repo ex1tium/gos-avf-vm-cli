@@ -7,6 +7,7 @@ environments with proper AVF environment setup and Wayland display checks.
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -177,8 +178,9 @@ def launch_desktop(config: Config, desktop_name: str, verbose: bool = False) -> 
             print(f"Sourcing {enable_display_path}")
         # Environment variables will be inherited by subprocess
         try:
+            quoted_path = shlex.quote(str(enable_display_path))
             result = subprocess.run(
-                ["bash", "-c", f"source {enable_display_path} && env"],
+                ["bash", "-c", f"source {quoted_path} && env"],
                 capture_output=True,
                 text=True,
                 check=True,

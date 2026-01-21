@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # =============================================================================
@@ -144,10 +145,17 @@ Dpkg::Use-Pty "0";
 """
     print("\n[+] Hardening APT config...")
     run(["sudo", "mkdir", "-p", "/etc/apt/apt.conf.d"], check=True)
-    # Write to temp file and copy with sudo (avoids shell piping)
-    tmp = Path("/tmp/99-linuxvm-robust")
-    tmp.write_text(content)
-    run(["sudo", "cp", str(tmp), str(conf)], check=True)
+    # Write to secure temp file and copy with sudo (avoids TOCTOU race condition)
+    fd, tmp_path = tempfile.mkstemp(prefix="gvm-apt-", suffix=".conf")
+    try:
+        os.fchmod(fd, 0o600)
+        os.write(fd, content.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        run(["sudo", "cp", tmp_path, str(conf)], check=True)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def stabilize_debian_mirror():
@@ -175,9 +183,17 @@ def stabilize_debian_mirror():
         f"https://security.debian.org/debian-security {codename}-security main contrib non-free non-free-firmware",
         ""
     ])
-    tmp = Path("/tmp/debian.list")
-    tmp.write_text(stable_list)
-    run(["sudo", "cp", str(tmp), str(mirrors)], check=True)
+    # Write to secure temp file and copy with sudo (avoids TOCTOU race condition)
+    fd, tmp_path = tempfile.mkstemp(prefix="gvm-mirror-", suffix=".list")
+    try:
+        os.fchmod(fd, 0o600)
+        os.write(fd, stable_list.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        run(["sudo", "cp", tmp_path, str(mirrors)], check=True)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def apt_clean_sledgehammer():
@@ -303,9 +319,17 @@ def configure_sshd_forwardable():
 """)
 
     new_cfg = "\n".join(text) + "\n"
-    tmp = Path("/tmp/sshd_config.new")
-    tmp.write_text(new_cfg)
-    run(["sudo", "cp", str(tmp), str(cfg)], check=True)
+    # Write to secure temp file and copy with sudo (avoids TOCTOU race condition)
+    fd, tmp_path = tempfile.mkstemp(prefix="gvm-sshd-", suffix=".conf")
+    try:
+        os.fchmod(fd, 0o600)
+        os.write(fd, new_cfg.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        run(["sudo", "cp", tmp_path, str(cfg)], check=True)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
     run(["sudo", "systemctl", "enable", "--now", "ssh"], check=True)
     run(["sudo", "systemctl", "restart", "ssh"], check=True)
@@ -348,19 +372,33 @@ fi
 
 
 def ensure_snippet(file_path: Path, label: str, snippet: str):
+    """Ensure a labeled snippet exists in a file using marker comments.
+
+    Uses marker comments to identify and manage the snippet:
+    - Marker begin: # >>> {label} >>>
+    - Marker end: # <<< {label} <<<
+
+    If markers already exist, the function returns without modification.
+    Otherwise, the snippet is appended to the file.
+
+    Args:
+        file_path: Path to the file to modify.
+        label: Unique label for the snippet markers.
+        snippet: Content to add between markers.
+    """
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    existing = file_path.read_text(errors="ignore") if file_path.exists() else ""
+    existing = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
     marker_begin = f"# >>> {label} >>>"
     marker_end = f"# <<< {label} <<<"
     block = f"\n{marker_begin}\n{snippet.strip()}\n{marker_end}\n"
 
     if marker_begin in existing and marker_end in existing:
-        print(f"[~] {label} snippet already present in {file_path}")
+        print(f"Snippet '{label}' already exists in {file_path}")
         return
 
     with file_path.open("a", encoding="utf-8") as f:
         f.write(block)
-    print(f"[OK] Added {label} snippet to {file_path}")
+    print(f"Added snippet '{label}' to {file_path}")
 
 
 def install_plasma_mobile_minimal():
@@ -516,10 +554,18 @@ echo "Note:   GrapheneOS Terminal Port Control will NOT expose port 22."
 echo "        Allow port {SSH_FORWARD_PORT} if prompted."
 echo ""
 """
-    tmp = Path("/tmp/00-linuxvm-banner.sh")
-    tmp.write_text(content)
-    run(["sudo", "cp", str(tmp), str(banner_path)], check=True)
-    run(["sudo", "chmod", "755", str(banner_path)], check=True)
+    # Write to secure temp file and copy with sudo (avoids TOCTOU race condition)
+    fd, tmp_path = tempfile.mkstemp(prefix="gvm-banner-", suffix=".sh")
+    try:
+        os.fchmod(fd, 0o600)
+        os.write(fd, content.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        run(["sudo", "cp", tmp_path, str(banner_path)], check=True)
+        run(["sudo", "chmod", "755", str(banner_path)], check=True)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
     print(f"[OK] Installed banner: {banner_path}")
 
 

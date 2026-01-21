@@ -85,7 +85,7 @@ def run(
 def _run_with_streaming(
     cmd: list[str],
     check: bool,
-    verbose: bool,
+    _verbose: bool,
     progress_callback: Callable[[str], None],
     env: Optional[dict],
 ) -> subprocess.CompletedProcess:
@@ -94,7 +94,7 @@ def _run_with_streaming(
     Args:
         cmd: Command and arguments as a list of strings.
         check: If True, raise SystemExit on non-zero exit code.
-        verbose: If True (unused here, already printed in caller).
+        _verbose: Unused here (already printed in caller), kept for API consistency.
         progress_callback: Callback to receive output lines.
         env: Optional environment variables.
 

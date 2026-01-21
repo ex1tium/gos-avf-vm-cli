@@ -440,15 +440,18 @@ class CursesTUI:
             else:
                 base_modules.append(mod_id)
 
+        # Build modules to execute (base + desktop if selected)
+        modules_to_run = base_modules.copy()
+        if desktop_selection:
+            # Set selected desktop in config so Desktop module knows which to install
+            self.config.selected_desktop = desktop_selection
+            modules_to_run.append("desktop")
+
         # Initialize progress state
         self.progress_state = ProgressState(
-            modules=base_modules.copy(),
+            modules=modules_to_run.copy(),
             start_time=time.time(),
         )
-
-        # Add desktop to modules list if selected
-        if desktop_selection:
-            self.progress_state.modules.append(f"desktop:{desktop_selection}")
 
         # Create orchestrator
         orchestrator = ModuleOrchestrator(
@@ -487,7 +490,7 @@ class CursesTUI:
         # Execute modules
         try:
             results = orchestrator.execute(
-                base_modules,
+                modules_to_run,
                 progress_callback=progress_callback,
                 error_callback=error_callback,
             )

@@ -243,7 +243,7 @@ The tool uses a modular architecture with:
 
 ### Key Components
 
-```
+```text
 src/gvm/
 ├── __init__.py          # Package initialization
 ├── __main__.py          # Entry point for python -m gvm
@@ -294,7 +294,7 @@ python -m pytest tests/ --cov=gvm --cov-report=html
 
 ### Project Structure
 
-```
+```text
 grapheneos-avf-debian-setup-scripts/
 ├── gvm                  # Root-level executable wrapper
 ├── src/

@@ -51,11 +51,13 @@ class DesktopModule(Module):
             config: Configuration object with user settings.
             verbose: Enable verbose output.
             dry_run: Simulate execution without making changes.
-            desktop_name: Optional specific desktop to install.
+            desktop_name: Optional specific desktop to install. If not provided,
+                         falls back to config.selected_desktop.
         """
         super().__init__(config, verbose, dry_run)
         self.marker_path = Path("/etc/gvm/desktop-installed")
-        self.desktop_name = desktop_name
+        # Use explicit desktop_name, or fall back to config.selected_desktop
+        self.desktop_name = desktop_name or config.selected_desktop
 
     def is_installed(self) -> tuple[bool, str]:
         """Check if desktop environment is already installed.
@@ -179,14 +181,7 @@ class DesktopModule(Module):
                 message=f"Desktop installation complete: {', '.join(installed_names)}",
             )
 
-        except SystemExit as e:
-            return ModuleResult(
-                status=ModuleStatus.FAILED,
-                message=str(e),
-                details=traceback.format_exc(),
-                recovery_command=self.get_recovery_command(),
-            )
-        except Exception as e:
+        except (SystemExit, Exception) as e:
             return ModuleResult(
                 status=ModuleStatus.FAILED,
                 message=str(e),

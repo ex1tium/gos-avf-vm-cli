@@ -31,11 +31,14 @@ def check_curses_available() -> bool:
     """
     try:
         import curses
+    except ImportError:
+        return False
 
+    try:
         # Test if terminal supports curses
         curses.setupterm()
         return True
-    except (ImportError, curses.error):
+    except curses.error:
         return False
 
 
@@ -566,6 +569,9 @@ def cmd_desktop(args: argparse.Namespace, config: Config) -> int:
         print("Error: Desktop module not yet implemented.")
         print("Desktop environment installation will be available in a future release.")
         return 1
+
+    # Set the selected desktop in config so the Desktop module knows which one to install
+    config.selected_desktop = target
 
     # Execute desktop module with specific desktop config
     orchestrator = ModuleOrchestrator(

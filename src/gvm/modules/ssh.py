@@ -115,14 +115,7 @@ class SSHModule(Module):
                 message="SSH configuration complete",
             )
 
-        except SystemExit as e:
-            return ModuleResult(
-                status=ModuleStatus.FAILED,
-                message=str(e),
-                details=traceback.format_exc(),
-                recovery_command=self.get_recovery_command(),
-            )
-        except Exception as e:
+        except (SystemExit, Exception) as e:
             return ModuleResult(
                 status=ModuleStatus.FAILED,
                 message=str(e),

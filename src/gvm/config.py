@@ -209,6 +209,7 @@ class Config:
         ssh: SSH configuration (permit_root_login, password_auth, etc.).
         features: Feature flags (install_desktop, install_shell_mods, etc.).
         banner: Banner display settings (title, ssh_note, etc.).
+        selected_desktop: Runtime-set desktop name for installation.
     """
 
     meta: dict = field(default_factory=dict)
@@ -218,6 +219,9 @@ class Config:
     ssh: dict = field(default_factory=dict)
     features: dict = field(default_factory=dict)
     banner: dict = field(default_factory=dict)
+
+    # Runtime configuration for module execution
+    selected_desktop: Optional[str] = field(default=None, repr=False)
 
     # Internal cache for discovered desktops (not serialized)
     _desktop_cache: Optional[dict[str, "DesktopConfig"]] = field(

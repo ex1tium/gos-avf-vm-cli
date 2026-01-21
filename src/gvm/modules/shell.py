@@ -118,14 +118,7 @@ class ShellModule(Module):
                 message="Shell configuration complete",
             )
 
-        except SystemExit as e:
-            return ModuleResult(
-                status=ModuleStatus.FAILED,
-                message=str(e),
-                details=traceback.format_exc(),
-                recovery_command=self.get_recovery_command(),
-            )
-        except Exception as e:
+        except (SystemExit, Exception) as e:
             return ModuleResult(
                 status=ModuleStatus.FAILED,
                 message=str(e),
@@ -308,7 +301,7 @@ fi
                 if self.auto_display_path.exists():
                     print(f"[DRY RUN] Would remove marker file: {self.auto_display_path}")
                 else:
-                    print(f"[DRY RUN] Would skip (auto_display disabled, marker does not exist)")
+                    print("[DRY RUN] Would skip (auto_display disabled, marker does not exist)")
             self._report_progress(
                 progress_callback, 1.0, "Auto-display configured (dry run)"
             )

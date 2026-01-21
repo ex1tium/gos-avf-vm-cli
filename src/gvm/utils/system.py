@@ -46,13 +46,18 @@ def detect_debian_codename() -> Optional[str]:
     return None
 
 
-def is_service_running(service_name: str) -> bool:
+# Default timeout for system probe commands (in seconds)
+DEFAULT_PROBE_TIMEOUT = 5
+
+
+def is_service_running(service_name: str, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
     """Check if a systemd service is running.
 
     Uses systemctl is-active to check service status.
 
     Args:
         service_name: Name of the systemd service (e.g., "ssh", "sshd").
+        timeout: Maximum seconds to wait for systemctl (default: 5).
 
     Returns:
         True if the service is active/running, False otherwise.
@@ -61,21 +66,26 @@ def is_service_running(service_name: str) -> bool:
         >>> if is_service_running("ssh"):
         ...     print("SSH service is running")
     """
-    result = subprocess.run(
-        ["systemctl", "is-active", service_name],
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", service_name],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, PermissionError):
+        return False
 
 
-def is_port_listening(port: int) -> bool:
+def is_port_listening(port: int, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
     """Check if a TCP port is listening.
 
     Uses ss command to check for listening sockets on the specified port.
 
     Args:
         port: TCP port number to check.
+        timeout: Maximum seconds to wait for ss command (default: 5).
 
     Returns:
         True if the port is listening, False otherwise.
@@ -90,6 +100,7 @@ def is_port_listening(port: int) -> bool:
             ["ss", "-ltn"],
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
 
         if ss_result.returncode != 0:
@@ -100,15 +111,16 @@ def is_port_listening(port: int) -> bool:
         port_pattern = f":{port}\\s"
         return bool(re.search(port_pattern, ss_result.stdout))
 
-    except (FileNotFoundError, PermissionError):
+    except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return False
 
 
-def get_user_home(username: str) -> Optional[Path]:
+def get_user_home(username: str, timeout: int = DEFAULT_PROBE_TIMEOUT) -> Optional[Path]:
     """Get the home directory for a user.
 
     Args:
         username: The username to look up.
+        timeout: Maximum seconds to wait for getent command (default: 5).
 
     Returns:
         Path to the user's home directory, or None if not found.
@@ -123,6 +135,7 @@ def get_user_home(username: str) -> Optional[Path]:
             ["getent", "passwd", username],
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
 
         if result.returncode != 0:
@@ -135,15 +148,16 @@ def get_user_home(username: str) -> Optional[Path]:
 
         return None
 
-    except (FileNotFoundError, PermissionError):
+    except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return None
 
 
-def user_exists(username: str) -> bool:
+def user_exists(username: str, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
     """Check if a user exists on the system.
 
     Args:
         username: The username to check.
+        timeout: Maximum seconds to wait for id command (default: 5).
 
     Returns:
         True if the user exists, False otherwise.
@@ -152,12 +166,16 @@ def user_exists(username: str) -> bool:
         >>> if user_exists("droid"):
         ...     print("User droid exists")
     """
-    result = subprocess.run(
-        ["id", username],
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
+    try:
+        result = subprocess.run(
+            ["id", username],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
+        return False
 
 
 def get_display_server() -> Optional[str]:

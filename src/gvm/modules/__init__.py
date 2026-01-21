@@ -30,6 +30,7 @@ from gvm.modules.desktop import DesktopModule
 from gvm.modules.gui import GUIModule
 from gvm.modules.shell import ShellModule
 from gvm.modules.ssh import SSHModule
+from gvm.modules.user import UserModule
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
 # Registry of available modules, mapping normalized names to module classes.
 AVAILABLE_MODULES: dict[str, type[Module]] = {
     "apt": APTModule,
+    "user": UserModule,
     "desktop": DesktopModule,
     "ssh": SSHModule,
     "shell": ShellModule,

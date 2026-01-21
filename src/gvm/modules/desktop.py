@@ -263,11 +263,68 @@ class DesktopModule(Module):
             verbose=self.verbose,
         )
 
+        # Disable any display managers that might have been installed as dependencies
+        # We use direct session start via gvm start, not a display manager
+        self._disable_display_managers(progress_callback, base_progress, progress_scale)
+
         self._report_progress(
             progress_callback,
             base_progress + 0.4 * progress_scale,
             f"Package installation complete for {desktop.name}",
         )
+
+    def _disable_display_managers(
+        self,
+        progress_callback: Callable[[float, str, Optional[str]], None],
+        base_progress: float,
+        progress_scale: float,
+    ) -> None:
+        """Disable any display managers that might have been installed.
+
+        Desktop packages often pull in display managers as dependencies.
+        We disable them since we use direct session start via 'gvm start'.
+
+        Args:
+            progress_callback: Callback to report progress.
+            base_progress: Base progress value for this operation.
+            progress_scale: Scale factor for progress increments.
+        """
+        display_managers = ["lightdm", "gdm3", "sddm", "lxdm", "nodm"]
+
+        self._report_progress(
+            progress_callback,
+            base_progress + 0.35 * progress_scale,
+            "Disabling display managers",
+            "Checking for installed display managers",
+        )
+
+        if self.dry_run:
+            print("[DRY RUN] Would check and disable display managers")
+            return
+
+        for dm in display_managers:
+            # Check if the display manager is enabled
+            result = run(
+                ["systemctl", "is-enabled", dm],
+                check=False,
+                capture=True,
+                verbose=self.verbose,
+            )
+
+            if result.returncode == 0 and "enabled" in result.stdout:
+                print(f"Disabling display manager: {dm}")
+                # Disable the display manager
+                run(
+                    ["sudo", "systemctl", "disable", dm],
+                    check=False,
+                    verbose=self.verbose,
+                )
+                # Stop it if running
+                run(
+                    ["sudo", "systemctl", "stop", dm],
+                    check=False,
+                    verbose=self.verbose,
+                )
 
     def _create_desktop_files(
         self,

@@ -2,18 +2,18 @@
 # Lightweight XFCE4 desktop environment for GrapheneOS AVF VM.
 #
 # XFCE4 is an X11-based desktop. On AVF's Wayland display, we use
-# weston compositor with XWayland to run XFCE4 as an X11 session.
+# Xwayland to provide X11 compatibility for XFCE4 applications.
+# The session starts directly without a login manager.
 
 [meta]
 name = "XFCE4"
-description = "Lightweight XFCE4 desktop (X11 via weston/XWayland)"
+description = "Lightweight XFCE4 desktop (X11 via XWayland)"
 type = "desktop"
 
 [packages]
 core = [
     "xfce4",
     "xfce4-goodies",
-    "weston",
 ]
 optional = [
     "firefox-esr",
@@ -34,21 +34,73 @@ vars = [
 ]
 
 [files]
-# Weston configuration with XWayland for XFCE4
-"~/.config/weston.ini" = """
-[core]
-xwayland=true
-idle-time=0
+# XFCE4 session startup script that finds an available display
+"~/.local/bin/xfce4-xwayland-session" = """#!/bin/bash
+# Start Xwayland with XFCE4 session
+# Finds an available display number to avoid conflicts
 
-[shell]
-panel-position=none
-locking=false
+# Find an available display number
+find_free_display() {
+    for i in $(seq 1 10); do
+        if [ ! -e "/tmp/.X${i}-lock" ] && [ ! -S "/tmp/.X11-unix/X${i}" ]; then
+            echo "$i"
+            return 0
+        fi
+    done
+    echo "1"  # fallback
+}
+
+DISPLAY_NUM=$(find_free_display)
+export DISPLAY=":${DISPLAY_NUM}"
+
+# Clean up any stale lock files for this display
+rm -f "/tmp/.X${DISPLAY_NUM}-lock" 2>/dev/null
+
+# Start Xwayland in the background with access control disabled
+Xwayland ":${DISPLAY_NUM}" -ac &
+XWAYLAND_PID=$!
+
+# Wait for Xwayland to be ready
+sleep 2
+
+# Verify Xwayland started
+if ! kill -0 $XWAYLAND_PID 2>/dev/null; then
+    echo "Failed to start Xwayland"
+    exit 1
+fi
+
+# Trap to clean up Xwayland on exit
+cleanup() {
+    kill $XWAYLAND_PID 2>/dev/null
+    rm -f "/tmp/.X${DISPLAY_NUM}-lock" 2>/dev/null
+}
+trap cleanup EXIT
+
+echo "Starting XFCE4 on display $DISPLAY"
+
+# Start XFCE4 session directly (bypasses login manager)
+exec startxfce4
+"""
+
+# Script to disable display manager on first run
+"~/.local/bin/disable-display-manager" = """#!/bin/bash
+# Disable any display manager that might have been installed
+# This ensures we use our direct session start approach
+
+for dm in lightdm gdm3 sddm lxdm nodm; do
+    if systemctl is-enabled "$dm" 2>/dev/null | grep -q enabled; then
+        echo "Disabling display manager: $dm"
+        sudo systemctl disable "$dm" 2>/dev/null || true
+        sudo systemctl stop "$dm" 2>/dev/null || true
+    fi
+done
+
+echo "Display manager disabled. Use 'gvm start' to launch desktop."
 """
 
 [session]
-# Run Xwayland directly and start XFCE4 on it
-# This is the simplest approach for X11 desktops on Wayland
-start_command = "Xwayland :0 -ac & sleep 1 && DISPLAY=:0 startxfce4"
-fallback_command = "Xwayland :0 -ac & sleep 1 && DISPLAY=:0 xfce4-session"
+# Use the wrapper script that handles display allocation
+start_command = "~/.local/bin/xfce4-xwayland-session"
+fallback_command = "xfce4-session"
 requires_dbus_session = true
 helper_script_name = "start-xfce4"

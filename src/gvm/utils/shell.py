@@ -21,6 +21,7 @@ def run(
     verbose: bool = False,
     progress_callback: Optional[Callable[[str], None]] = None,
     env: Optional[dict] = None,
+    input_data: Optional[str] = None,
 ) -> subprocess.CompletedProcess:
     """Execute a shell command with optional output capture and progress streaming.
 
@@ -32,6 +33,7 @@ def run(
         progress_callback: Optional callback to receive output lines in real-time.
             Only used when capture is True.
         env: Optional environment variables to pass to subprocess.
+        input_data: Optional string to pass to stdin of the command.
 
     Returns:
         subprocess.CompletedProcess with execution results.
@@ -44,6 +46,8 @@ def run(
         >>> print(result.stdout)
 
         >>> run(["apt", "update"], verbose=True, progress_callback=print)
+
+        >>> run(["chpasswd"], input_data="user:password\\n")
     """
     if verbose:
         print(f"Running: {' '.join(cmd)}")
@@ -58,6 +62,10 @@ def run(
     if capture:
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.STDOUT
+        kwargs["text"] = True
+
+    if input_data is not None:
+        kwargs["input"] = input_data
         kwargs["text"] = True
 
     if env:

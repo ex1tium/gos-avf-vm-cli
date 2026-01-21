@@ -11,9 +11,24 @@ These steps must be completed **on your Android device** before starting the VM:
 1. Go to **Settings > System > Developer Options**
    - If Developer Options is not visible, go to Settings > About Phone and tap "Build Number" 7 times
 2. Enable **"Linux development environment"**
-3. Optionally enable **"Disable Child Process Restrictions"** for better compatibility
+3. Enable **"Disable Child Process Restrictions"** (recommended for better compatibility with desktop environments and some applications)
 
-### 2. Enable GPU Acceleration (Recommended)
+### 2. Prevent Sleep During Setup (Important)
+
+The VM can become corrupted if the device sleeps during package installation or setup. Configure your device to stay awake while charging:
+
+1. Go to **Settings > System > Developer Options**
+2. Enable **"Stay awake"** (keeps screen on while charging)
+3. **Keep your device plugged in** during the entire setup process
+
+> **Warning**: Allowing the device to sleep during `apt install` or `gvm setup` can corrupt
+> the VM's package database or leave the system in an inconsistent state. If this happens,
+> you may need to reset the VM and start over.
+
+After setup is complete, it's recommended to **shut down the VM** when not in use rather than
+letting it run in the background. Use `sudo poweroff` or close the Terminal app completely.
+
+### 3. Enable GPU Acceleration (Recommended)
 
 VirGL GPU acceleration must be enabled **before** starting the VM. This cannot be done from inside the VM.
 
@@ -25,13 +40,13 @@ VirGL GPU acceleration must be enabled **before** starting the VM. This cannot b
 5. When you open the Terminal app, you should see a toast message: **"VirGL enabled"**
    - This toast is displayed automatically by the GrapheneOS Terminal app
 
-### 3. Start the VM
+### 4. Start the VM
 
 1. Open the **Terminal** app
 2. Wait for the Debian image to download (first launch only, ~500MB)
 3. Once at the shell prompt, proceed with cloning this repository
 
-### 4. Enable Graphical Display (For Desktop Use)
+### 5. Enable Graphical Display (For Desktop Use)
 
 When you're ready to use a desktop environment:
 

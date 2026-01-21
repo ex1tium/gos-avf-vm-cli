@@ -63,10 +63,41 @@ def ensure_snippet(
     marker_begin = f"# >>> {label} >>>"
     marker_end = f"# <<< {label} <<<"
 
-    # Check if markers already present
-    if marker_begin in content and marker_end in content:
+    has_begin = marker_begin in content
+    has_end = marker_end in content
+
+    # Check if markers already present (complete block)
+    if has_begin and has_end:
         print(f"Snippet '{label}' already exists in {file_path}")
         return
+
+    # Handle partial marker state (corrupted/incomplete block)
+    if has_begin or has_end:
+        if has_begin and not has_end:
+            print(f"Warning: Found partial snippet '{label}' in {file_path} (begin marker without end marker)")
+            print(f"  Removing partial block and re-adding complete snippet")
+            # Remove from begin marker to end of content
+            begin_idx = content.index(marker_begin)
+            content = content[:begin_idx].rstrip("\n")
+        elif has_end and not has_begin:
+            print(f"Warning: Found partial snippet '{label}' in {file_path} (end marker without begin marker)")
+            print(f"  Removing partial block and re-adding complete snippet")
+            # Remove from start of line containing end marker to the end marker
+            end_idx = content.index(marker_end)
+            # Find start of line containing end marker
+            line_start = content.rfind("\n", 0, end_idx)
+            if line_start == -1:
+                line_start = 0
+            else:
+                line_start += 1  # Move past the newline
+            # Remove from line_start through end of marker_end line
+            end_of_marker_line = content.find("\n", end_idx)
+            if end_of_marker_line == -1:
+                end_of_marker_line = len(content)
+            content = content[:line_start] + content[end_of_marker_line + 1:]
+
+        # Rewrite the cleaned content
+        file_path.write_text(content)
 
     # Append the snippet block
     block = f"\n{marker_begin}\n{snippet.strip()}\n{marker_end}\n"

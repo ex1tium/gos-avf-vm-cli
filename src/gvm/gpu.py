@@ -101,7 +101,7 @@ def cmd_gpu_status(verbose: bool = False) -> int:
     """Handle 'gvm gpu status' command.
 
     Args:
-        verbose: Show detailed output.
+        verbose: Show detailed output including raw diagnostics.
 
     Returns:
         Exit code (0 for success).
@@ -112,6 +112,11 @@ def cmd_gpu_status(verbose: bool = False) -> int:
     is_active, message = check_virgl_status()
     print(message)
     print("=" * 50)
+
+    if verbose:
+        print("\nDiagnostics:")
+        print(f"  is_active: {is_active}")
+        print(f"  Raw message:\n    " + message.replace("\n", "\n    "))
 
     if is_active:
         print("\n✓ GPU acceleration appears to be active")

@@ -1073,11 +1073,11 @@ class CursesTUI:
                     start_new_session=True,
                 )
             except Exception as e:
-                # Restore terminal and report the error
+                # Report the error - do not attempt to re-initialize curses
+                # as this is unsafe outside the wrapper context.
+                # Terminal restoration is handled by the curses.wrapper that
+                # invoked _main_loop.
                 print(
                     f"Failed to launch {helper_script}: {e}",
                     file=sys.stderr,
                 )
-                # Re-initialize curses if needed for continued operation
-                if self.stdscr:
-                    self.stdscr = curses.initscr()

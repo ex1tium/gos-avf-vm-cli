@@ -9,6 +9,7 @@ files with path expansion, and generates helper launch scripts.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import traceback
 from pathlib import Path
@@ -340,14 +341,25 @@ class DesktopModule(Module):
         # Export environment variables
         if desktop.environment_vars:
             lines.append("# Environment variables")
+            # Regex for valid shell identifier: starts with letter or underscore,
+            # followed by alphanumerics or underscores
+            valid_key_pattern = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
             for var in desktop.environment_vars:
                 # Validate and quote environment variable assignments
                 if "=" in var:
                     key, value = var.split("=", 1)
+                    # Validate key is a safe shell identifier
+                    if not valid_key_pattern.match(key):
+                        print(f"Warning: Skipping invalid env var key: {key!r}")
+                        continue
                     # Use shlex.quote for shell-safe quoting (handles single quotes, etc.)
                     lines.append(f"export {key}={shlex.quote(value)}")
                 else:
                     # Variable reference without value (export existing var)
+                    # Validate the variable name
+                    if not valid_key_pattern.match(var):
+                        print(f"Warning: Skipping invalid env var name: {var!r}")
+                        continue
                     lines.append(f"export {var}")
             lines.append("")
 

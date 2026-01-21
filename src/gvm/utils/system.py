@@ -115,7 +115,10 @@ def is_port_listening(port: int, timeout: int = DEFAULT_PROBE_TIMEOUT) -> bool:
 
         # Check if the port appears in the output
         # ss output format includes ":port" in the local address column
-        port_pattern = f":{port}\\s"
+        # Use negative lookbehind to ensure the colon is not preceded by a digit
+        # (avoiding matching :122 when searching for :22)
+        # and lookahead for whitespace or end of string
+        port_pattern = rf"(?<![0-9]):{port}(?=\s|$)"
         return bool(re.search(port_pattern, ss_result.stdout))
 
     except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):

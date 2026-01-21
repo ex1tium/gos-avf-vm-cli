@@ -252,13 +252,21 @@ class TestFileCreation(unittest.TestCase):
             if "config.conf" in str(call[0][0])
         ]
 
+        # Assert the expected writes occurred - fail loudly if they didn't
+        self.assertGreater(
+            len(script_calls), 0,
+            "Expected safe_write call for script.sh but none found"
+        )
+        self.assertGreater(
+            len(config_calls), 0,
+            "Expected safe_write call for config.conf but none found"
+        )
+
         # Script should have 0o755
-        if script_calls:
-            self.assertEqual(script_calls[0][1].get("mode"), 0o755)
+        self.assertEqual(script_calls[0][1].get("mode"), 0o755)
 
         # Config should have 0o644
-        if config_calls:
-            self.assertEqual(config_calls[0][1].get("mode"), 0o644)
+        self.assertEqual(config_calls[0][1].get("mode"), 0o644)
 
 
 class TestHelperScriptGeneration(unittest.TestCase):

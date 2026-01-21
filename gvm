@@ -150,10 +150,20 @@ Please upgrade Python manually:
             # Try installing python3.12 first (more common in newer repos)
             if sudo apt-get install -y -qq python3.12 2>/dev/null; then
                 success "python3.12 installed"
+                # Register python3.12 as an alternative and set it as default
+                if command -v update-alternatives &> /dev/null; then
+                    sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 2 2>/dev/null || true
+                    sudo update-alternatives --set python3 /usr/bin/python3.12 2>/dev/null || true
+                fi
             else
                 warn "python3.12 not available. Trying python3.11..."
                 if sudo apt-get install -y -qq python3.11 2>/dev/null; then
                     success "python3.11 installed"
+                    # Register python3.11 as an alternative and set it as default
+                    if command -v update-alternatives &> /dev/null; then
+                        sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 2 2>/dev/null || true
+                        sudo update-alternatives --set python3 /usr/bin/python3.11 2>/dev/null || true
+                    fi
                 else
                     error_exit "Could not install Python 3.11+.
 The default python3 package provides $(get_python_version) which is too old.
@@ -166,7 +176,8 @@ Please install Python 3.11+ manually:
       sudo apt install python3.11"
                 fi
             fi
-            # Re-check after fallback install
+            # Re-check after fallback install (hash -r to refresh PATH cache)
+            hash -r 2>/dev/null || true
             if ! check_python_version; then
                 error_exit "Python 3.11+ still not available after installation attempts.
 Installed Python version: $(get_python_version)

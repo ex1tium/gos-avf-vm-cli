@@ -20,15 +20,10 @@ wayland_helpers = []
 user_packages = []
 
 [environment]
+# XFCE4 traditionally runs on X11. These vars are minimal defaults.
+# For Wayland compositors (e.g., labwc), add Wayland-specific vars to a custom config.
 vars = [
-    "XDG_SESSION_TYPE=wayland",
-    "WAYLAND_DISPLAY=wayland-0",
-    "QT_QPA_PLATFORM=wayland",
-    "GDK_BACKEND=wayland",
-    "MOZ_ENABLE_WAYLAND=1",
-    "SDL_VIDEODRIVER=wayland",
-    "WLR_NO_HARDWARE_CURSORS=1",
-    "LIBGL_ALWAYS_INDIRECT=0",
+    "XDG_SESSION_TYPE=x11",
 ]
 
 [files]

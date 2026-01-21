@@ -332,8 +332,31 @@ on an actual AVF (Android Virtualization Framework) virtual machine.
 
 1. **Missing package test**
    ```bash
-   # Temporarily break apt (don't do this on production!)
-   # Then run module and verify error handling
+   # Test module behavior when a package cannot be found
+   # Use a non-existent package name to simulate missing package
+
+   # Create a temporary desktop config with a fake package
+   mkdir -p ~/.config/gvm/packages
+   cat > ~/.config/gvm/packages/test-missing-pkg.toml << 'EOF'
+   [meta]
+   name = "TestMissingPkg"
+   description = "Test desktop with missing package"
+   type = "desktop"
+
+   [packages]
+   core = ["this-package-does-not-exist-12345"]
+
+   [session]
+   start_command = "echo test"
+   EOF
+
+   # Run the module (should fail gracefully with error message)
+   ./gvm desktop "TestMissingPkg"
+
+   # Expected: Module reports failure with package name and recovery command
+
+   # Cleanup
+   rm ~/.config/gvm/packages/test-missing-pkg.toml
    ```
 
 2. **Permission denied test**

@@ -7,6 +7,8 @@ available desktop environments.
 
 from __future__ import annotations
 
+import re
+import shlex
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
@@ -314,8 +316,24 @@ fi
 # Set environment variables
 '''
             # Add environment variables if defined
+            # Regex for valid shell identifier: starts with letter or underscore,
+            # followed by alphanumerics or underscores
+            valid_key_pattern = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
             for env_var in desktop.environment_vars:
-                content += f'export {env_var}\n'
+                if "=" in env_var:
+                    key, value = env_var.split("=", 1)
+                    # Validate key is a safe shell identifier
+                    if not valid_key_pattern.match(key):
+                        print(f"Warning: Skipping invalid env var key in {desktop_name}: {key!r}")
+                        continue
+                    # Use shlex.quote for shell-safe quoting
+                    content += f'export {key}={shlex.quote(value)}\n'
+                else:
+                    # Variable reference without value - validate the name
+                    if not valid_key_pattern.match(env_var):
+                        print(f"Warning: Skipping invalid env var name in {desktop_name}: {env_var!r}")
+                        continue
+                    content += f'export {env_var}\n'
 
             content += f'''
 # Launch desktop session

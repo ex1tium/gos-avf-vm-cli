@@ -279,6 +279,8 @@ MaxAuthTries 3
         Args:
             progress_callback: Callback to report progress.
         """
+        import time
+
         self._report_progress(
             progress_callback,
             0.75,
@@ -302,13 +304,48 @@ MaxAuthTries 3
         # Verify service is running
         self._report_progress(
             progress_callback,
-            0.9,
+            0.85,
             "Verifying SSH service",
             "Checking service status",
         )
 
         if not is_service_running("ssh"):
             raise SystemExit("SSH service failed to start after restart")
+
+        # Wait for SSH port to be listening inside the VM
+        forward_port = self.config.ssh_forward_port
+        internal_port = self.config.ssh_internal_port
+
+        self._report_progress(
+            progress_callback,
+            0.9,
+            "Waiting for SSH port",
+            f"Checking port {forward_port}",
+        )
+
+        max_wait = 10  # seconds
+        port_listening = False
+        for _ in range(max_wait * 2):  # Check every 0.5 seconds
+            if is_port_listening(forward_port):
+                port_listening = True
+                break
+            time.sleep(0.5)
+
+        if port_listening:
+            print(f"SSH listening on port {forward_port}")
+            if internal_port and is_port_listening(internal_port):
+                print(f"SSH also listening on port {internal_port}")
+            print("")
+            print("To connect from your computer:")
+            print(f"  1. In GrapheneOS Terminal, tap the menu (⋮) and select 'Port forwarding'")
+            print(f"  2. Add a rule to forward port {forward_port}")
+            print(f"  3. Connect with: ssh -p {forward_port} <user>@<device-ip>")
+        else:
+            # Port not listening after timeout
+            raise SystemExit(
+                f"SSH service started but port {forward_port} is not listening. "
+                f"Check 'sudo systemctl status ssh' for errors."
+            )
 
         self._report_progress(
             progress_callback, 1.0, "SSH service running"

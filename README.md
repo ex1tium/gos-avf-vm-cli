@@ -110,18 +110,24 @@ No installation required - the tool is self-contained and runs from the reposito
 | Command | Description |
 |---------|-------------|
 | `./gvm setup` | Interactive TUI with component selection |
-| `./gvm setup --all` | Non-interactive full setup (all modules) |
+| `./gvm setup --all` | Non-interactive full setup (prompts for desktop choice) |
+| `./gvm setup --all --force` | Force re-run even if already installed |
 
 ### Setup Commands
 
 | Command | Description |
 |---------|-------------|
 | `./gvm apt` | Configure APT package manager |
+| `./gvm apt --force` | Force re-run APT configuration |
 | `./gvm ssh` | Configure SSH server (ports 2222/22) |
 | `./gvm desktop <name>` | Install desktop environment |
 | `./gvm desktop list` | List available desktops |
 | `./gvm shell` | Configure shell (Starship, banner) |
 | `./gvm gui` | Install GUI helper scripts |
+
+Desktop names support case-insensitive and partial matching:
+- `./gvm desktop plasma` → installs "Plasma Mobile"
+- `./gvm desktop xfce4` → installs "XFCE4"
 
 ### Runtime Commands
 
@@ -132,6 +138,10 @@ No installation required - the tool is self-contained and runs from the reposito
 | `./gvm gpu status` | Check VirGL GPU status |
 | `./gvm gpu help` | Show VirGL setup instructions |
 
+Desktop names for `start` also support fuzzy matching:
+- `./gvm start plasma` → starts "Plasma Mobile"
+- `./gvm start xfce4` → starts "XFCE4"
+
 ### Management Commands
 
 | Command | Description |
@@ -139,7 +149,8 @@ No installation required - the tool is self-contained and runs from the reposito
 | `./gvm config init` | Create user config at `~/.config/gvm/config.toml` |
 | `./gvm config show` | Display effective configuration |
 | `./gvm info` | Show system information |
-| `./gvm fix <target>` | Run recovery commands |
+| `./gvm fix apt` | Fix APT issues (clean cache, repair dpkg) |
+| `./gvm fix ssh` | Fix SSH issues (restart service) |
 
 ### Global Flags
 
@@ -149,6 +160,7 @@ No installation required - the tool is self-contained and runs from the reposito
 | `--config PATH` | Use custom config file |
 | `--dry-run` | Simulate without making changes |
 | `-i, --interactive` | Force interactive mode |
+| `-f, --force` | Force re-run even if already installed |
 
 ## Configuration Guide
 
@@ -248,10 +260,14 @@ setting1=value1
 
 ### Available Desktops
 
-| Desktop | Config File |
-|---------|-------------|
-| Plasma Mobile | `config/packages/plasma-mobile.toml` |
-| XFCE4 | `config/packages/xfce4.toml` |
+| Desktop | Description | Config File |
+|---------|-------------|-------------|
+| Plasma Mobile | KDE Plasma Mobile for touch-friendly operation | `config/packages/plasma-mobile.toml` |
+| XFCE4 | Lightweight XFCE4 via cage compositor | `config/packages/xfce4.toml` |
+
+**Notes:**
+- XFCE4 runs inside the `cage` Wayland compositor since XFCE doesn't natively support Wayland
+- Plasma Mobile runs natively on Wayland with KWin
 
 User configs in `~/.config/gvm/packages/` override repository configs with the same name.
 
@@ -262,9 +278,11 @@ User configs in `~/.config/gvm/packages/` override repository configs with the s
 | Error | Solution |
 |-------|----------|
 | "Interactive mode requires curses support" | Use `./gvm setup --all` for non-interactive mode |
+| APT errors (400 Bad Request, mirror issues) | Run `./gvm apt --force` to auto-repair mirror config |
 | APT errors (lock, network) | Run `./gvm fix apt` |
 | SSH not starting | Run `./gvm fix ssh` |
 | Module dependency failures | Check `./gvm info` for status |
+| "Already installed" but setup incomplete | Use `--force` flag to re-run: `./gvm apt --force` |
 
 ### Recovery Commands
 
@@ -272,11 +290,17 @@ User configs in `~/.config/gvm/packages/` override repository configs with the s
 # Fix APT issues (clean cache, repair dpkg, update)
 ./gvm fix apt
 
+# Force re-run APT module (repairs corrupted mirror files)
+./gvm apt --force
+
 # Fix SSH issues (restart service)
 ./gvm fix ssh
 
 # Re-run a specific module
 ./gvm <module-name>
+
+# Force re-run entire setup
+./gvm setup --all --force
 ```
 
 ## Architecture Overview

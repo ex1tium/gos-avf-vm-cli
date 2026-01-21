@@ -29,6 +29,7 @@ class ShellModule(Module):
     2. Add Starship init to bashrc
     3. Create login banner script
     4. Configure auto-display toggle
+    5. Create enable_display script and auto-source it on shell start
     """
 
     name = "shell"
@@ -52,7 +53,9 @@ class ShellModule(Module):
         self.bashrc_path = Path.home() / ".bashrc"
         self.banner_script_path = Path("/etc/profile.d/00-linuxvm-banner.sh")
         self.auto_display_path = Path.home() / ".config" / "linuxvm" / "auto_display"
+        self.enable_display_path = Path.home() / ".config" / "linuxvm" / "enable_display"
         self.starship_marker = "gvm-starship"
+        self.enable_display_marker = "gvm-enable-display"
 
     def is_installed(self) -> tuple[bool, str]:
         """Check if shell configuration is already present.
@@ -64,17 +67,20 @@ class ShellModule(Module):
         result = run(["which", "starship"], capture=True, check=False)
         starship_installed = result.returncode == 0
 
-        # Check if bashrc snippet exists
-        bashrc_snippet_present = False
+        # Check if bashrc snippets exist
+        starship_snippet_present = False
+        enable_display_snippet_present = False
         if self.bashrc_path.exists():
             try:
                 content = self.bashrc_path.read_text()
-                marker = f"# >>> {self.starship_marker} >>>"
-                bashrc_snippet_present = marker in content
+                starship_marker = f"# >>> {self.starship_marker} >>>"
+                enable_display_marker = f"# >>> {self.enable_display_marker} >>>"
+                starship_snippet_present = starship_marker in content
+                enable_display_snippet_present = enable_display_marker in content
             except (IOError, PermissionError):
                 pass
 
-        if starship_installed and bashrc_snippet_present:
+        if starship_installed and starship_snippet_present and enable_display_snippet_present:
             return (True, "Shell configuration already present")
 
         return (False, "Shell not configured")
@@ -110,6 +116,9 @@ class ShellModule(Module):
 
             # Step 5: Create enable_display script
             self._create_enable_display_script(progress_callback)
+
+            # Step 6: Configure auto-sourcing of enable_display in bashrc
+            self._configure_enable_display_bashrc(progress_callback)
 
             self._report_progress(
                 progress_callback, 1.0, "Shell configuration complete"
@@ -408,5 +417,46 @@ export LIBGL_ALWAYS_INDIRECT=0
         safe_write(enable_display_path, content, backup=True, mode=0o644)
 
         self._report_progress(
-            progress_callback, 0.95, "Display script created"
+            progress_callback, 0.92, "Display script created"
+        )
+
+    def _configure_enable_display_bashrc(
+        self,
+        progress_callback: Callable[[float, str, Optional[str]], None],
+    ) -> None:
+        """Add enable_display auto-sourcing to bashrc.
+
+        This ensures the display environment is set up automatically
+        each time the VM starts and user gets a shell.
+
+        Args:
+            progress_callback: Callback to report progress.
+        """
+        self._report_progress(
+            progress_callback,
+            0.93,
+            "Configuring display auto-enable",
+            f"Adding snippet to {self.bashrc_path}",
+        )
+
+        # Use a snippet that sources enable_display if it exists
+        snippet = f'''# Auto-source display environment on shell start
+if [ -f "{self.enable_display_path}" ]; then
+    source "{self.enable_display_path}"
+fi'''
+
+        if self.dry_run:
+            print(f"[DRY RUN] Would add enable_display snippet to {self.bashrc_path}:")
+            print(f"  # >>> {self.enable_display_marker} >>>")
+            print(f"  {snippet}")
+            print(f"  # <<< {self.enable_display_marker} <<<")
+            self._report_progress(
+                progress_callback, 0.98, "Display auto-enable configured (dry run)"
+            )
+            return
+
+        ensure_snippet(self.bashrc_path, self.enable_display_marker, snippet)
+
+        self._report_progress(
+            progress_callback, 0.98, "Display auto-enable configured"
         )

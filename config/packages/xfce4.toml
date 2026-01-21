@@ -1,19 +1,19 @@
 # XFCE4 Desktop Configuration
 # Lightweight XFCE4 desktop environment for GrapheneOS AVF VM.
 #
-# XFCE 4.20+ has experimental Wayland support using labwc or wayfire compositors.
-# On AVF, we use cage as a minimal Wayland compositor to run XFCE4.
+# XFCE4 is an X11-based desktop. On AVF's Wayland display, we use
+# weston compositor with XWayland to run XFCE4 as an X11 session.
 
 [meta]
 name = "XFCE4"
-description = "Lightweight XFCE4 desktop (via cage compositor)"
+description = "Lightweight XFCE4 desktop (X11 via weston/XWayland)"
 type = "desktop"
 
 [packages]
 core = [
     "xfce4",
     "xfce4-goodies",
-    "cage",
+    "weston",
 ]
 optional = [
     "firefox-esr",
@@ -26,19 +26,29 @@ wayland_helpers = [
 user_packages = []
 
 [environment]
-# XFCE4 runs inside cage compositor which handles Wayland display
+# XFCE4 is X11-based - tell apps to use X11 backend
 vars = [
-    "XDG_SESSION_TYPE=wayland",
+    "XDG_SESSION_TYPE=x11",
     "GDK_BACKEND=x11",
-    "WLR_NO_HARDWARE_CURSORS=1",
+    "QT_QPA_PLATFORM=xcb",
 ]
 
 [files]
+# Weston configuration with XWayland for XFCE4
+"~/.config/weston.ini" = """
+[core]
+xwayland=true
+idle-time=0
+
+[shell]
+panel-position=none
+locking=false
+"""
 
 [session]
-# Use cage compositor to run xfce4-session
-# cage is a minimal Wayland compositor that runs a single application fullscreen
-start_command = "cage -- xfce4-session"
-fallback_command = "cage -- startxfce4"
+# Run Xwayland directly and start XFCE4 on it
+# This is the simplest approach for X11 desktops on Wayland
+start_command = "Xwayland :0 -ac & sleep 1 && DISPLAY=:0 startxfce4"
+fallback_command = "Xwayland :0 -ac & sleep 1 && DISPLAY=:0 xfce4-session"
 requires_dbus_session = true
 helper_script_name = "start-xfce4"

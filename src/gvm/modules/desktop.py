@@ -344,10 +344,8 @@ class DesktopModule(Module):
                 # Validate and quote environment variable assignments
                 if "=" in var:
                     key, value = var.split("=", 1)
-                    # Properly quote the value to handle spaces and special chars
-                    # Remove existing quotes if present to normalize
-                    value = value.strip("'\"")
-                    lines.append(f"export {key}='{value}'")
+                    # Use shlex.quote for shell-safe quoting (handles single quotes, etc.)
+                    lines.append(f"export {key}={shlex.quote(value)}")
                 else:
                     # Variable reference without value (export existing var)
                     lines.append(f"export {var}")

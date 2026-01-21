@@ -223,6 +223,10 @@ class CursesTUI:
         available = list_modules()
 
         for module_name in available:
+            # Skip the generic "desktop" module - desktops are handled via "desktop:<name>" entries
+            if module_name == "desktop":
+                continue
+
             if module_name in base_modules:
                 name, desc = base_modules[module_name]
             else:
@@ -511,12 +515,19 @@ class CursesTUI:
                 error_callback=error_callback,
             )
 
-            # Track completed modules
-            for name, result in results.items():
-                if result.status == ModuleStatus.SUCCESS:
-                    self.progress_state.completed.add(name)
-                elif result.status == ModuleStatus.SKIPPED:
-                    self.progress_state.skipped.add(name)
+            # Derive final status sets from results (normalizes stale entries from error_callback)
+            self.progress_state.completed = {
+                name for name, result in results.items()
+                if result.status == ModuleStatus.SUCCESS
+            }
+            self.progress_state.failed = {
+                name for name, result in results.items()
+                if result.status == ModuleStatus.FAILED
+            }
+            self.progress_state.skipped = {
+                name for name, result in results.items()
+                if result.status == ModuleStatus.SKIPPED
+            }
 
             return results
 

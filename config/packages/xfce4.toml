@@ -21,14 +21,20 @@ user_packages = []
 
 [environment]
 vars = [
-    "XDG_SESSION_TYPE=x11",
-    "GDK_BACKEND=x11",
+    "XDG_SESSION_TYPE=wayland",
+    "WAYLAND_DISPLAY=wayland-0",
+    "QT_QPA_PLATFORM=wayland",
+    "GDK_BACKEND=wayland",
+    "MOZ_ENABLE_WAYLAND=1",
+    "SDL_VIDEODRIVER=wayland",
+    "WLR_NO_HARDWARE_CURSORS=1",
+    "LIBGL_ALWAYS_INDIRECT=0",
 ]
 
 [files]
 
 [session]
-start_command = "startxfce4"
+start_command = "dbus-run-session startxfce4"
 fallback_command = "xfce4-session"
-requires_dbus_session = true
+requires_dbus_session = false
 helper_script_name = "start-xfce4"

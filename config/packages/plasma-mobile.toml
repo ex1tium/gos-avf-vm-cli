@@ -27,11 +27,16 @@ user_packages = []
 [environment]
 vars = [
     "XDG_SESSION_TYPE=wayland",
+    "WAYLAND_DISPLAY=wayland-0",
     "QT_QPA_PLATFORM=wayland",
-    "MOZ_ENABLE_WAYLAND=1",
+    "QT_WAYLAND_DISABLE_WINDOWDECORATION=1",
     "GDK_BACKEND=wayland",
+    "MOZ_ENABLE_WAYLAND=1",
     "SDL_VIDEODRIVER=wayland",
+    "CLUTTER_BACKEND=wayland",
+    "ECORE_EVAS_ENGINE=wayland_shm",
     "WLR_NO_HARDWARE_CURSORS=1",
+    "LIBGL_ALWAYS_INDIRECT=0",
 ]
 
 [files]

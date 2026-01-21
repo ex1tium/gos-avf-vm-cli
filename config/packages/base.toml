@@ -18,4 +18,5 @@ core = [
     "procps",
     "dbus-user-session",
     "openssh-server",
+    "mesa-utils",
 ]

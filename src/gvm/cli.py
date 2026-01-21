@@ -178,6 +178,49 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Show help for gui command",
     )
 
+    # Start command
+    start_parser = subparsers.add_parser(
+        "start",
+        help="Launch desktop environment",
+        add_help=False,
+    )
+    start_parser.add_argument(
+        "desktop_name",
+        nargs="?",
+        metavar="name",
+        help="Desktop name to start (optional if only one installed)",
+    )
+    start_parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List installed desktops",
+    )
+    start_parser.add_argument(
+        "-h",
+        "--help",
+        action="store_true",
+        help="Show help for start command",
+    )
+
+    # GPU command
+    gpu_parser = subparsers.add_parser(
+        "gpu",
+        help="GPU status and diagnostics",
+        add_help=False,
+    )
+    gpu_parser.add_argument(
+        "gpu_action",
+        nargs="?",
+        choices=["status", "help"],
+        help="GPU action: status or help",
+    )
+    gpu_parser.add_argument(
+        "-h",
+        "--help",
+        action="store_true",
+        help="Show help for gpu command",
+    )
+
     # Config command
     config_parser = subparsers.add_parser(
         "config",
@@ -243,6 +286,12 @@ SETUP COMMANDS:
   desktop list          List available desktops
   shell                 Configure shell customizations
   gui                   Install GUI helper scripts
+
+RUNTIME COMMANDS:
+  start [desktop]       Launch desktop environment
+  start --list          List installed desktops
+  gpu status            Check VirGL GPU status
+  gpu help              Show VirGL setup instructions
 
 MANAGEMENT COMMANDS:
   config init           Create user config file
@@ -361,6 +410,41 @@ TARGETS:
 
 DESCRIPTION:
   Runs recovery procedures for the specified target.
+""",
+        "start": """gvm start - Launch Desktop Environment
+
+USAGE:
+  gvm start [desktop]
+  gvm start --list
+
+ARGUMENTS:
+  desktop               Name of desktop to start (optional if only one installed)
+
+OPTIONS:
+  --list                List installed desktop environments
+
+DESCRIPTION:
+  Launches a desktop environment with proper AVF environment setup.
+  Checks Wayland display readiness and provides guidance if not ready.
+
+  If no desktop name is provided, starts:
+  - Last used desktop (if known)
+  - Only installed desktop (if exactly one)
+  - Shows list if multiple desktops installed
+""",
+        "gpu": """gvm gpu - GPU Status and Diagnostics
+
+USAGE:
+  gvm gpu status
+  gvm gpu help
+
+ACTIONS:
+  status                Check if VirGL GPU acceleration is active
+  help                  Show VirGL setup instructions
+
+DESCRIPTION:
+  Provides GPU-related diagnostics and setup guidance for VirGL
+  acceleration on GrapheneOS AVF VMs.
 """,
     }
 
@@ -853,10 +937,68 @@ def route_command(args: argparse.Namespace, config: Config) -> int:
         return cmd_info(args, config)
     elif command == "fix":
         return cmd_fix(args, config)
+    elif command == "start":
+        return cmd_start(args, config)
+    elif command == "gpu":
+        return cmd_gpu(args, config)
     else:
         print(f"Unknown command: {command}")
         show_help()
         return 1
+
+
+def cmd_start(args: argparse.Namespace, config: Config) -> int:
+    """Handle the start command.
+
+    Args:
+        args: Parsed command-line arguments.
+        config: Loaded configuration.
+
+    Returns:
+        Exit code (0 for success, non-zero for errors).
+    """
+    if getattr(args, "help", False):
+        show_command_help("start")
+        return 0
+
+    from gvm.start import cmd_start as start_impl
+
+    return start_impl(
+        config,
+        desktop_name=getattr(args, "desktop_name", None),
+        list_desktops=getattr(args, "list", False),
+        verbose=args.verbose,
+    )
+
+
+def cmd_gpu(args: argparse.Namespace, config: Config) -> int:
+    """Handle the gpu command.
+
+    Args:
+        args: Parsed command-line arguments.
+        config: Loaded configuration.
+
+    Returns:
+        Exit code (0 for success, non-zero for errors).
+    """
+    if getattr(args, "help", False):
+        show_command_help("gpu")
+        return 0
+
+    from gvm.gpu import cmd_gpu_help, cmd_gpu_status
+
+    action = getattr(args, "gpu_action", None)
+
+    if action is None:
+        show_command_help("gpu")
+        return 0
+
+    if action == "status":
+        return cmd_gpu_status(verbose=args.verbose)
+    elif action == "help":
+        return cmd_gpu_help()
+
+    return 0
 
 
 def main() -> int:

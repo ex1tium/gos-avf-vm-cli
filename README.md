@@ -2,6 +2,47 @@
 
 Automated setup tool for configuring Debian Trixie on GrapheneOS Android Virtualization Framework (AVF) VMs.
 
+## Prerequisites (Before Cloning)
+
+These steps must be completed **on your Android device** before starting the VM:
+
+### 1. Enable Linux Terminal (Required)
+
+1. Go to **Settings > System > Developer Options**
+   - If Developer Options is not visible, go to Settings > About Phone and tap "Build Number" 7 times
+2. Enable **"Linux development environment"**
+3. Optionally enable **"Disable Child Process Restrictions"** for better compatibility
+
+### 2. Enable GPU Acceleration (Recommended)
+
+VirGL GPU acceleration must be enabled **before** starting the VM. This cannot be done from inside the VM.
+
+1. Open the **Files** app on your Android device
+2. Navigate to **Internal Storage**
+3. Create a folder named `linux` (if it doesn't exist)
+4. Inside the `linux` folder, create an empty file named `virglrenderer`
+   - The file contents don't matter, only the filename
+5. When you open the Terminal app, you should see a toast message: **"VirGL enabled"**
+   - This toast is displayed automatically by the GrapheneOS Terminal app
+
+### 3. Start the VM
+
+1. Open the **Terminal** app
+2. Wait for the Debian image to download (first launch only, ~500MB)
+3. Once at the shell prompt, proceed with cloning this repository
+
+### 4. Enable Graphical Display (For Desktop Use)
+
+When you're ready to use a desktop environment:
+
+1. Look for the **display icon** in the top-right corner of the Terminal app
+2. Tap it to enable the graphical display
+3. Then run `gvm start` to launch your desktop
+
+> **Note**: GPU acceleration is provided via ANGLE-based VirGL. Some applications
+> requiring newer OpenGL versions may not work until full GPU virtualization
+> is available (currently Pixel 10+ only with gfxstream).
+
 ## Features
 
 - **Modular Architecture**: Five independent modules (apt, ssh, shell, gui, desktop) with dependency resolution
@@ -81,6 +122,15 @@ No installation required - the tool is self-contained and runs from the reposito
 | `./gvm desktop list` | List available desktops |
 | `./gvm shell` | Configure shell (Starship, banner) |
 | `./gvm gui` | Install GUI helper scripts |
+
+### Runtime Commands
+
+| Command | Description |
+|---------|-------------|
+| `./gvm start [desktop]` | Launch desktop environment |
+| `./gvm start --list` | List installed desktops |
+| `./gvm gpu status` | Check VirGL GPU status |
+| `./gvm gpu help` | Show VirGL setup instructions |
 
 ### Management Commands
 

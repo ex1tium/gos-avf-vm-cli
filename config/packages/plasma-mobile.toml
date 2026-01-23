@@ -70,14 +70,12 @@ fi
 # Wrapper to launch plasmashell with mobile shell
 echo "plasmashell-mobile: Starting plasmashell with mobile shell..."
 
-# Start required KDE daemons that plasmashell needs
-# kactivitymanagerd is required for Plasma shell to load
-if command -v kactivitymanagerd >/dev/null 2>&1; then
-    if ! pgrep -x kactivitymanagerd >/dev/null 2>&1; then
-        echo "plasmashell-mobile: Starting kactivitymanagerd..."
-        kactivitymanagerd &
-        sleep 1
-    fi
+# Note: kactivitymanagerd should already be running (started by plasma-mobile-session)
+# Verify it's running before proceeding, start as fallback if not
+if ! pgrep -x kactivitymanagerd >/dev/null 2>&1; then
+    echo "plasmashell-mobile: WARNING - kactivitymanagerd not running, starting it..."
+    kactivitymanagerd &
+    sleep 2
 fi
 
 # The PLASMA_DEFAULT_SHELL env var tells plasmashell which shell to use
@@ -196,10 +194,22 @@ sleep 2
 # Start required KDE daemons BEFORE kwin
 # kactivitymanagerd is required for Plasma shell to load
 if command -v kactivitymanagerd >/dev/null 2>&1; then
-    if ! pgrep -x kactivitymanagerd >/dev/null 2>&1; then
-        echo "Starting kactivitymanagerd..."
-        kactivitymanagerd &
-        sleep 1
+    # Kill any stale kactivitymanagerd from previous failed attempts
+    pkill -9 -x kactivitymanagerd 2>/dev/null || true
+    sleep 0.5
+
+    echo "Starting kactivitymanagerd..."
+    kactivitymanagerd &
+    KACTIVITY_PID=$!
+
+    # Wait for D-Bus registration (kactivitymanagerd needs time to register)
+    sleep 2
+
+    # Verify it's still running
+    if kill -0 $KACTIVITY_PID 2>/dev/null; then
+        echo "kactivitymanagerd started (PID: $KACTIVITY_PID)"
+    else
+        echo "WARNING: kactivitymanagerd may have failed to start"
     fi
 fi
 

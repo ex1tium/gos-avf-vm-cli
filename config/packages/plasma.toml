@@ -68,9 +68,19 @@ fi
 # Uses kwin_wayland directly to bypass systemd-logind dependency
 # See: https://community.kde.org/KWin/Wayland
 
-set -e
-
 echo "=== KDE Plasma Session Launcher (AVF) ==="
+
+# Trap signals for clean shutdown
+KWIN_PID=""
+cleanup() {
+    echo "Shutting down Plasma session..."
+    if [ -n "$KWIN_PID" ] && kill -0 "$KWIN_PID" 2>/dev/null; then
+        kill "$KWIN_PID" 2>/dev/null
+        wait "$KWIN_PID" 2>/dev/null
+    fi
+    exit 0
+}
+trap cleanup INT TERM HUP
 
 # Step 1: Set up XDG_RUNTIME_DIR BEFORE dbus-launch
 # This must exist before any Wayland/D-Bus operations
@@ -120,18 +130,21 @@ export KWIN_FORCE_SW_CURSOR=1
 
 # Step 5: Launch kwin_wayland directly with plasmashell
 # NOTE: We intentionally skip startplasma-wayland because it requires systemd-logind
-# The --exit-with-session flag makes kwin exit when plasmashell exits
 echo "Starting kwin_wayland with Plasma Desktop shell..."
 
-# Use the default plasmashell for standard Plasma Desktop
-exec kwin_wayland --xwayland --exit-with-session plasmashell
+# Run in background and wait, so we can handle signals
+kwin_wayland --xwayland --exit-with-session=plasmashell &
+KWIN_PID=$!
+
+# Wait for kwin to exit
+wait $KWIN_PID
 """
 
 [session]
 # Use our custom wrapper script that handles D-Bus and bypasses systemd
 # Note: requires_dbus_session is false because the script handles D-Bus internally
 start_command = "~/.local/bin/plasma-session"
-fallback_command = "kwin_wayland --xwayland --exit-with-session plasmashell"
+fallback_command = "kwin_wayland --xwayland --exit-with-session=plasmashell"
 requires_dbus_session = false
 helper_script_name = "start-plasma"
 

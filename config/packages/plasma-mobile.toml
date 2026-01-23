@@ -200,8 +200,10 @@ fi
 # Check for existing Wayland socket from AVF host
 if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
     echo "Found AVF Wayland socket: $WAYLAND_DISPLAY"
-    echo "Running kwin as nested compositor..."
-    kwin_wayland --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+    echo "Running kwin as nested compositor on host's $WAYLAND_DISPLAY..."
+    # Use different socket name for kwin's clients to avoid conflict with host socket
+    # kwin will set WAYLAND_DISPLAY=wayland-kwin for plasmashell automatically
+    kwin_wayland --socket wayland-kwin --xwayland "$HOME/.local/bin/plasmashell-mobile" &
     KWIN_PID=$!
 elif [ -d "/dev/dri" ]; then
     echo "Attempting DRM backend for display..."

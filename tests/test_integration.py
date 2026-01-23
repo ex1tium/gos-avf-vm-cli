@@ -75,8 +75,12 @@ class TestCompleteSetupFlow(unittest.TestCase):
     @mock.patch("gvm.modules.gui.GUIModule.is_installed")
     @mock.patch("gvm.modules.desktop.DesktopModule.run")
     @mock.patch("gvm.modules.desktop.DesktopModule.is_installed")
+    @mock.patch("gvm.modules.user.UserModule.run")
+    @mock.patch("gvm.modules.user.UserModule.is_installed")
     def test_full_setup_all_modules_execute(
         self,
+        mock_user_installed: mock.Mock,
+        mock_user_run: mock.Mock,
         mock_desktop_installed: mock.Mock,
         mock_desktop_run: mock.Mock,
         mock_gui_installed: mock.Mock,
@@ -95,6 +99,7 @@ class TestCompleteSetupFlow(unittest.TestCase):
         mock_shell_installed.return_value = (False, "Not configured")
         mock_gui_installed.return_value = (False, "Not configured")
         mock_desktop_installed.return_value = (False, "Not configured")
+        mock_user_installed.return_value = (False, "Not configured")
 
         # All modules return success
         success_result = ModuleResult(status=ModuleStatus.SUCCESS, message="Completed")
@@ -103,10 +108,11 @@ class TestCompleteSetupFlow(unittest.TestCase):
         mock_shell_run.return_value = success_result
         mock_gui_run.return_value = success_result
         mock_desktop_run.return_value = success_result
+        mock_user_run.return_value = success_result
 
         # Execute all modules
         orchestrator = ModuleOrchestrator(self.config, verbose=False, dry_run=False)
-        modules = list_modules()  # ['apt', 'desktop', 'gui', 'shell', 'ssh']
+        modules = list_modules()  # ['apt', 'desktop', 'gui', 'shell', 'ssh', 'user']
 
         progress_calls: list[tuple[float, str]] = []
 
@@ -201,7 +207,7 @@ class TestIndividualModuleExecution(unittest.TestCase):
     def test_cmd_module_validates_module_exists(self) -> None:
         """cmd_module validates that module name exists."""
         args = argparse.Namespace(
-            verbose=False, dry_run=False, help=False, config=None
+            verbose=False, dry_run=False, help=False, config=None, force=False
         )
 
         # Test with invalid module - should print error and return 1
@@ -221,7 +227,7 @@ class TestIndividualModuleExecution(unittest.TestCase):
         }
 
         args = argparse.Namespace(
-            verbose=False, dry_run=False, help=False, config=None
+            verbose=False, dry_run=False, help=False, config=None, force=False
         )
         result = cmd_module(args, self.config, "apt")
 
@@ -245,7 +251,7 @@ class TestIndividualModuleExecution(unittest.TestCase):
         }
 
         args = argparse.Namespace(
-            verbose=False, dry_run=False, help=False, config=None
+            verbose=False, dry_run=False, help=False, config=None, force=False
         )
 
         with mock.patch("builtins.print"):
@@ -867,8 +873,9 @@ class TestDryRunMode(unittest.TestCase):
         self.assertTrue(args.all)
 
     @mock.patch("gvm.orchestrator.ModuleOrchestrator.execute")
+    @mock.patch("builtins.input", return_value="1")  # Auto-select first desktop
     def test_cmd_setup_all_passes_dry_run(
-        self, mock_execute: mock.Mock
+        self, mock_input: mock.Mock, mock_execute: mock.Mock
     ) -> None:
         """cmd_setup passes dry_run to orchestrator."""
         mock_execute.return_value = {}
@@ -881,9 +888,11 @@ class TestDryRunMode(unittest.TestCase):
             all=True,
             config=None,
             interactive=False,
+            force=False,
         )
 
-        cmd_setup(args, config)
+        with mock.patch("builtins.print"):
+            cmd_setup(args, config)
 
         # Orchestrator was created with dry_run=True
         # (We can't directly check this from the mock, but we verify the flow)
@@ -1216,8 +1225,9 @@ class TestSetupAllCLIFlow(unittest.TestCase):
         self.config = Config.load()
 
     @mock.patch("gvm.orchestrator.ModuleOrchestrator.execute")
+    @mock.patch("builtins.input", return_value="1")  # Auto-select first desktop
     def test_setup_all_via_route_command(
-        self, mock_execute: mock.Mock
+        self, mock_input: mock.Mock, mock_execute: mock.Mock
     ) -> None:
         """Test setup --all executes via route_command with expected modules."""
         # Mock execute to return success for all modules
@@ -1227,6 +1237,7 @@ class TestSetupAllCLIFlow(unittest.TestCase):
             "shell": ModuleResult(status=ModuleStatus.SUCCESS, message="Done"),
             "gui": ModuleResult(status=ModuleStatus.SUCCESS, message="Done"),
             "desktop": ModuleResult(status=ModuleStatus.SUCCESS, message="Done"),
+            "user": ModuleResult(status=ModuleStatus.SUCCESS, message="Done"),
         }
 
         # Parse args like CLI would
@@ -1251,8 +1262,9 @@ class TestSetupAllCLIFlow(unittest.TestCase):
             self.assertIn(mod, modules_requested)
 
     @mock.patch("gvm.orchestrator.ModuleOrchestrator.execute")
+    @mock.patch("builtins.input", return_value="1")  # Auto-select first desktop
     def test_setup_all_via_cmd_setup(
-        self, mock_execute: mock.Mock
+        self, mock_input: mock.Mock, mock_execute: mock.Mock
     ) -> None:
         """Test cmd_setup with --all flag invokes orchestrator correctly."""
         mock_execute.return_value = {
@@ -1266,6 +1278,7 @@ class TestSetupAllCLIFlow(unittest.TestCase):
             all=True,
             config=None,
             interactive=False,
+            force=False,
         )
 
         with mock.patch("builtins.print"):
@@ -1275,8 +1288,9 @@ class TestSetupAllCLIFlow(unittest.TestCase):
         mock_execute.assert_called_once()
 
     @mock.patch("gvm.orchestrator.ModuleOrchestrator.execute")
+    @mock.patch("builtins.input", return_value="1")  # Auto-select first desktop
     def test_setup_all_returns_error_on_module_failure(
-        self, mock_execute: mock.Mock
+        self, mock_input: mock.Mock, mock_execute: mock.Mock
     ) -> None:
         """Test setup --all returns non-zero exit code when modules fail."""
         mock_execute.return_value = {
@@ -1290,6 +1304,7 @@ class TestSetupAllCLIFlow(unittest.TestCase):
             all=True,
             config=None,
             interactive=False,
+            force=False,
         )
 
         with mock.patch("builtins.print"):
@@ -1299,8 +1314,9 @@ class TestSetupAllCLIFlow(unittest.TestCase):
         self.assertEqual(result, 1)
 
     @mock.patch("gvm.orchestrator.ModuleOrchestrator.execute")
+    @mock.patch("builtins.input", return_value="1")  # Auto-select first desktop
     def test_setup_all_prints_summary_message(
-        self, mock_execute: mock.Mock
+        self, mock_input: mock.Mock, mock_execute: mock.Mock
     ) -> None:
         """Test setup --all prints summary with success/failure counts."""
         mock_execute.return_value = {
@@ -1315,6 +1331,7 @@ class TestSetupAllCLIFlow(unittest.TestCase):
             all=True,
             config=None,
             interactive=False,
+            force=False,
         )
 
         printed_messages = []
@@ -1475,10 +1492,21 @@ class TestTUICursesInteraction(unittest.TestCase):
             # Should return list with first component
             self.assertIn(first_comp.id, result)
 
-    def test_draw_progress_screen_calls_addstr(self) -> None:
+    @mock.patch("gvm.tui.curses")
+    def test_draw_progress_screen_calls_addstr(
+        self, mock_curses: mock.Mock
+    ) -> None:
         """Test that _draw_progress_screen makes expected addstr calls."""
         from gvm.tui import CursesTUI, ProgressState
         import time
+
+        # Configure curses mock
+        mock_curses.has_colors.return_value = False
+        mock_curses.A_NORMAL = 0
+        mock_curses.A_BOLD = 1
+        mock_curses.A_DIM = 2
+        mock_curses.A_REVERSE = 4
+        mock_curses.color_pair.return_value = 0
 
         tui = CursesTUI(self.config)
 
@@ -1553,10 +1581,21 @@ class TestTUICursesInteraction(unittest.TestCase):
         self.assertIn("apt", rendered_text)
         self.assertIn("ssh", rendered_text)
 
-    def test_draw_progress_screen_verbose_mode(self) -> None:
+    @mock.patch("gvm.tui.curses")
+    def test_draw_progress_screen_verbose_mode(
+        self, mock_curses: mock.Mock
+    ) -> None:
         """Test that verbose mode shows log pane."""
         from gvm.tui import CursesTUI, ProgressState
         import time
+
+        # Configure curses mock
+        mock_curses.has_colors.return_value = False
+        mock_curses.A_NORMAL = 0
+        mock_curses.A_BOLD = 1
+        mock_curses.A_DIM = 2
+        mock_curses.A_REVERSE = 4
+        mock_curses.color_pair.return_value = 0
 
         tui = CursesTUI(self.config, verbose=True)
 
@@ -1620,6 +1659,7 @@ class TestDesktopCLIFlow(unittest.TestCase):
             help=False,
             desktop_target="test-desktop",
             config=None,
+            force=False,
         )
 
         with mock.patch("builtins.print"):
@@ -1652,6 +1692,7 @@ class TestDesktopCLIFlow(unittest.TestCase):
             help=False,
             desktop_target="nonexistent-desktop",
             config=None,
+            force=False,
         )
 
         with mock.patch("builtins.print") as mock_print:
@@ -1671,14 +1712,16 @@ class TestDesktopCLIFlow(unittest.TestCase):
         mock_discover: mock.Mock,
     ) -> None:
         """Test desktop list shows all discovered desktops."""
-        # Mock multiple desktops
+        # Mock multiple desktops (using canonical names)
         mock_discover.return_value = {
             "plasma-mobile": DesktopConfig(
-                name="Plasma Mobile",
+                name="plasma-mobile",
+                display_name="Plasma Mobile",
                 description="KDE Plasma Mobile desktop",
             ),
             "xfce4": DesktopConfig(
-                name="XFCE4",
+                name="xfce4",
+                display_name="XFCE4",
                 description="Lightweight XFCE desktop",
             ),
         }
@@ -1689,6 +1732,7 @@ class TestDesktopCLIFlow(unittest.TestCase):
             help=False,
             desktop_target="list",
             config=None,
+            force=False,
         )
 
         printed_messages = []
@@ -1734,6 +1778,7 @@ class TestDesktopCLIFlow(unittest.TestCase):
             help=False,
             desktop_target="failing-desktop",
             config=None,
+            force=False,
         )
 
         with mock.patch("builtins.print"):

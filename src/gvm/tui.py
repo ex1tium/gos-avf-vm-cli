@@ -260,10 +260,12 @@ class CursesTUI:
         desktops = self.config.discover_desktops()
 
         for desktop_name, desktop_config in sorted(desktops.items()):
+            # Use display_name for user-facing name, canonical name for ID
+            display = desktop_config.display_name or desktop_name
             components.append(
                 Component(
                     id=f"desktop:{desktop_name}",
-                    name=desktop_config.name,
+                    name=display,
                     description=desktop_config.description or "Desktop environment",
                     default_selected=False,
                 )
@@ -421,25 +423,11 @@ class CursesTUI:
                     continue
                 comp = state.components[state.cursor_pos]
                 is_selecting = not state.selections.get(comp.id, False)
-                # Desktop entries are mutually exclusive
-                if comp.id.startswith("desktop:") and is_selecting:
-                    # Clear other desktop selections first
-                    for other in state.components:
-                        if other.id.startswith("desktop:") and other.id != comp.id:
-                            state.selections[other.id] = False
                 state.selections[comp.id] = is_selecting
             elif key in (ord("a"), ord("A")):
-                # Select all (desktops are mutually exclusive - select first one only)
-                first_desktop_selected = False
+                # Select all
                 for comp in state.components:
-                    if comp.id.startswith("desktop:"):
-                        if not first_desktop_selected:
-                            state.selections[comp.id] = True
-                            first_desktop_selected = True
-                        else:
-                            state.selections[comp.id] = False
-                    else:
-                        state.selections[comp.id] = True
+                    state.selections[comp.id] = True
             elif key in (ord("n"), ord("N")):
                 # Deselect all
                 for comp in state.components:
@@ -451,7 +439,127 @@ class CursesTUI:
                     for comp in state.components
                     if state.selections.get(comp.id, False)
                 ]
+                # Check for multiple desktop selections
+                selected_desktops = [s for s in selected if s.startswith("desktop:")]
+                if len(selected_desktops) > 1:
+                    # Show conflict warning
+                    if not self._show_multi_desktop_warning(selected_desktops):
+                        continue  # User cancelled, go back to selection
                 return selected
+
+    def _show_multi_desktop_warning(self, selected_desktops: list[str]) -> bool:
+        """Show warning when multiple desktops are selected.
+
+        Args:
+            selected_desktops: List of selected desktop IDs (e.g., 'desktop:plasma-mobile').
+
+        Returns:
+            True if user wants to proceed, False to go back.
+        """
+        if self.stdscr is None:
+            return True
+
+        desktops = self.config.discover_desktops()
+
+        # Get display names for selected desktops
+        desktop_names = []
+        for d in selected_desktops:
+            canonical = d.split(":", 1)[1]
+            if canonical in desktops:
+                display = desktops[canonical].display_name or canonical
+                desktop_names.append(f"{display} ({canonical})")
+            else:
+                desktop_names.append(canonical)
+
+        # Check for specific conflicts
+        conflicts: list[str] = []
+        for d in selected_desktops:
+            canonical = d.split(":", 1)[1]
+            if canonical in desktops:
+                desktop_config = desktops[canonical]
+                for conflict in desktop_config.conflicts_with:
+                    if f"desktop:{conflict}" in selected_desktops:
+                        conflicts.append(f"{canonical} conflicts with {conflict}")
+
+        while True:
+            self.stdscr.clear()
+            height, width = self.stdscr.getmaxyx()
+
+            # Title
+            title = "Multiple Desktops Selected"
+            attr = curses.color_pair(3) if curses.has_colors() else curses.A_BOLD
+            try:
+                self.stdscr.addstr(0, max(0, (width - len(title)) // 2), title, attr)
+            except curses.error:
+                pass
+
+            y = 2
+
+            # Warning message
+            try:
+                warn_msg = "You have selected multiple desktop environments:"
+                self.stdscr.addstr(y, 0, warn_msg)
+                y += 2
+
+                for name in desktop_names:
+                    self.stdscr.addstr(y, 4, f"• {name}")
+                    y += 1
+            except curses.error:
+                pass
+
+            y += 1
+
+            # Show conflicts if any
+            if conflicts:
+                try:
+                    conflict_attr = curses.color_pair(2) if curses.has_colors() else curses.A_BOLD
+                    self.stdscr.addstr(y, 0, "Conflicts detected:", conflict_attr)
+                    y += 1
+                    for conflict in conflicts:
+                        self.stdscr.addstr(y, 4, f"⚠ {conflict}", conflict_attr)
+                        y += 1
+                except curses.error:
+                    pass
+                y += 1
+
+            # Info about multiple desktops
+            try:
+                info_lines = [
+                    "Installing multiple desktops may:",
+                    "  • Increase disk usage significantly",
+                    "  • Cause package conflicts",
+                    "  • Create confusion with login managers",
+                    "",
+                    "However, you can switch between them using 'gvm start <name>'.",
+                ]
+                for line in info_lines:
+                    self.stdscr.addstr(y, 0, line, curses.A_DIM)
+                    y += 1
+            except curses.error:
+                pass
+
+            # Options
+            options_y = height - 4
+            try:
+                self.stdscr.addstr(options_y, 0, "-" * width, curses.A_DIM)
+                self.stdscr.addstr(options_y + 1, 2, "[P] Proceed with installation")
+                self.stdscr.addstr(options_y + 2, 2, "[B] Go back and change selection")
+            except curses.error:
+                pass
+
+            self.stdscr.refresh()
+
+            try:
+                key = self.stdscr.getch()
+            except curses.error:
+                continue
+
+            if key == curses.KEY_RESIZE:
+                continue
+            elif key in (ord("p"), ord("P"), curses.KEY_ENTER, ord("\n"), ord("\r")):
+                return True
+            elif key in (ord("b"), ord("B"), ord("q"), ord("Q"), 27):
+                return False
 
     def _show_progress(self, modules: list[str]) -> dict[str, ModuleResult]:
         """Display progress screen and execute modules.
@@ -467,19 +575,25 @@ class CursesTUI:
 
         # Separate base modules from desktop selections
         base_modules = []
-        desktop_selection = None
+        desktop_selections: list[str] = []
 
         for mod_id in modules:
             if mod_id.startswith("desktop:"):
-                desktop_selection = mod_id.split(":", 1)[1]
+                desktop_selections.append(mod_id.split(":", 1)[1])
             else:
                 base_modules.append(mod_id)
 
-        # Build modules to execute (base + desktop if selected)
+        # Build modules to execute (base + desktops if selected)
         modules_to_run = base_modules.copy()
-        if desktop_selection:
-            # Set selected desktop in config so Desktop module knows which to install
-            self.config.selected_desktop = desktop_selection
+        if desktop_selections:
+            # Store all selected desktops for multi-install
+            # The desktop module will handle each one
+            self.config._selected_desktops = desktop_selections
+            # For single desktop, also set selected_desktop for backward compat
+            if len(desktop_selections) == 1:
+                self.config.selected_desktop = desktop_selections[0]
+            else:
+                self.config.selected_desktop = desktop_selections[0]  # Primary desktop
             modules_to_run.append("desktop")
 
         # Initialize progress state

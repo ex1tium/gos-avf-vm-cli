@@ -185,11 +185,11 @@ on an actual AVF (Android Virtualization Framework) virtual machine.
    ```bash
    python -c "from gvm.config import Config; print(Config.load().discover_desktops())"
    ```
-   Expected: Dictionary with available desktops (e.g., Plasma Mobile, XFCE4).
+   Expected: Dictionary with available desktops (e.g., plasma-mobile, xfce4, plasma).
 
 2. **Test dry-run mode**
    ```bash
-   python -m gvm desktop "Plasma Mobile" --dry-run
+   python -m gvm desktop plasma-mobile --dry-run
    ```
    Expected: Shows what would be done without making changes:
    - Package list to install
@@ -198,7 +198,7 @@ on an actual AVF (Android Virtualization Framework) virtual machine.
 
 3. **Test actual installation (Plasma Mobile)**
    ```bash
-   python -m gvm desktop "Plasma Mobile"
+   python -m gvm desktop plasma-mobile
    ```
    Expected: Packages downloaded and installed, files created, helper script generated.
 
@@ -238,12 +238,12 @@ on an actual AVF (Android Virtualization Framework) virtual machine.
    ```bash
    cat /etc/gvm/desktop-installed
    ```
-   Expected: Contains "Plasma Mobile" or list of installed desktops.
+   Expected: Contains "plasma-mobile" or list of installed desktops.
 
 9. **Test XFCE4 installation (alternative)**
    ```bash
-   python -m gvm desktop "XFCE4" --dry-run
-   python -m gvm desktop "XFCE4"
+   python -m gvm desktop xfce4 --dry-run
+   python -m gvm desktop xfce4
    ```
    Expected: XFCE4 packages installed, start-xfce4 script created.
 
@@ -252,7 +252,7 @@ on an actual AVF (Android Virtualization Framework) virtual machine.
 1. **Test recovery command**
    ```bash
    gvm fix desktop
-   gvm fix desktop "Plasma Mobile"
+   gvm fix desktop plasma-mobile
    ```
    Expected: Desktop configuration restored/verified.
 

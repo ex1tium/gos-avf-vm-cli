@@ -50,9 +50,9 @@ class TestDesktopModuleInstantiation(unittest.TestCase):
     def test_desktop_module_with_desktop_name(self) -> None:
         """DesktopModule accepts optional desktop_name parameter."""
         config = Config.load()
-        module = DesktopModule(config, desktop_name="Plasma Mobile")
+        module = DesktopModule(config, desktop_name="plasma-mobile")
 
-        self.assertEqual(module.desktop_name, "Plasma Mobile")
+        self.assertEqual(module.desktop_name, "plasma-mobile")
 
 
 class TestDesktopModuleAttributes(unittest.TestCase):
@@ -122,7 +122,7 @@ class TestDesktopConfigLoading(unittest.TestCase):
         mock_discover: MagicMock,
     ) -> None:
         """Module returns error when requested desktop not found."""
-        mock_discover.return_value = {"XFCE4": DesktopConfig(name="XFCE4")}
+        mock_discover.return_value = {"xfce4": DesktopConfig(name="xfce4")}
 
         config = Config.load()
         module = DesktopModule(config, desktop_name="NonExistent")
@@ -285,7 +285,7 @@ class TestHelperScriptGeneration(unittest.TestCase):
     def test_script_name_generation_from_desktop_name(self) -> None:
         """Script name generated from desktop.name when helper_script_name not set."""
         desktop = DesktopConfig(
-            name="Plasma Mobile",
+            name="plasma-mobile",
             session_helper_script_name="",  # Empty, should derive from name
         )
 
@@ -474,9 +474,9 @@ class TestDesktopModuleRecovery(unittest.TestCase):
     def test_recovery_command_with_desktop_name(self) -> None:
         """get_recovery_command includes desktop name when specified."""
         config = Config.load()
-        module = DesktopModule(config, desktop_name="Plasma Mobile")
+        module = DesktopModule(config, desktop_name="plasma-mobile")
 
-        self.assertEqual(module.get_recovery_command(), "gvm fix desktop Plasma Mobile")
+        self.assertEqual(module.get_recovery_command(), "gvm fix desktop plasma-mobile")
 
 
 class TestDesktopModuleRun(unittest.TestCase):

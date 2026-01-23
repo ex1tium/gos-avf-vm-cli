@@ -17,51 +17,73 @@ if TYPE_CHECKING:
     from gvm.config import Config
 
 
+def normalize_desktop_name(name: str) -> str:
+    """Normalize a desktop name to canonical form.
+
+    Converts user-friendly names to canonical lowercase hyphenated form.
+    Examples:
+        "Plasma Mobile" -> "plasma-mobile"
+        "XFCE4" -> "xfce4"
+
+    Args:
+        name: Desktop name to normalize.
+
+    Returns:
+        Normalized canonical desktop name.
+    """
+    return name.lower().replace(" ", "-").strip()
+
+
 def resolve_desktop_name(config: Config, user_input: str) -> Optional[str]:
-    """Resolve user input to actual desktop name with fuzzy matching.
+    """Resolve user input to canonical desktop name with fuzzy matching.
 
     Supports:
-    - Exact match (case-insensitive)
-    - Partial match (e.g., "plasma" matches "Plasma Mobile")
-    - Common aliases
+    - Exact match on canonical name (case-insensitive)
+    - Exact match on display_name (case-insensitive)
+    - Prefix match (e.g., "plasma" matches "plasma-mobile")
+    - Common variations (spaces, hyphens, underscores treated equally)
 
     Args:
         config: Configuration object.
         user_input: User-provided desktop name.
 
     Returns:
-        Actual desktop name from config, or None if not found.
+        Canonical desktop name from config, or None if not found.
     """
     desktops = config.discover_desktops()
-    user_lower = user_input.lower()
+    user_normalized = normalize_desktop_name(user_input)
 
-    # Try exact match (case-insensitive)
-    for name in desktops.keys():
-        if name.lower() == user_lower:
+    # Try exact match on canonical name
+    if user_normalized in desktops:
+        return user_normalized
+
+    # Try exact match on display_name (case-insensitive)
+    for name, desktop in desktops.items():
+        if desktop.display_name.lower() == user_input.lower():
+            return name
+        # Also try normalized display_name
+        if normalize_desktop_name(desktop.display_name) == user_normalized:
             return name
 
-    # Try partial match - user input is prefix or substring
+    # Try prefix match on canonical names
     matches = []
     for name in desktops.keys():
-        name_lower = name.lower()
-        # Check if user input is a prefix or the name starts with it
-        if name_lower.startswith(user_lower):
+        if name.startswith(user_normalized):
             matches.append(name)
-        # Check if any word in the name starts with user input
-        elif any(word.startswith(user_lower) for word in name_lower.split()):
+        # Also check if any part matches (e.g., "mobile" in "plasma-mobile")
+        elif user_normalized in name.split("-"):
             matches.append(name)
 
     # If exactly one match, return it
     if len(matches) == 1:
         return matches[0]
 
-    # If multiple matches, try to find the best one
+    # If multiple matches, prefer exact segment match
     if len(matches) > 1:
-        # Prefer exact word match
         for name in matches:
-            if user_lower in name.lower().split():
+            segments = name.split("-")
+            if user_normalized in segments:
                 return name
-        # Return first match if no exact word match
         return matches[0]
 
     return None
@@ -205,7 +227,7 @@ def launch_desktop(config: Config, desktop_name: str, verbose: bool = False) -> 
 
     Args:
         config: Configuration object.
-        desktop_name: Name of desktop to launch.
+        desktop_name: Canonical desktop name to launch.
         verbose: Show verbose output.
 
     Returns:
@@ -220,11 +242,12 @@ def launch_desktop(config: Config, desktop_name: str, verbose: bool = False) -> 
         return 1
 
     desktop = desktops[desktop_name]
+    display_name = desktop.display_name or desktop_name
 
     # Check if desktop is installed
     installed = get_installed_desktops(config)
     if desktop_name not in installed:
-        print(f"Error: Desktop '{desktop_name}' is not installed")
+        print(f"Error: Desktop '{display_name}' ({desktop_name}) is not installed")
         print(f"Install with: gvm desktop {desktop_name}")
         return 1
 
@@ -317,14 +340,17 @@ def cmd_start(
             print("No desktop environments installed.")
             print("\nAvailable desktops:")
             for name in sorted(desktops.keys()):
-                print(f"  {name} - {desktops[name].description}")
+                desktop = desktops[name]
+                display = desktop.display_name or name
+                print(f"  {name:<18} {display:<18} {desktop.description}")
             print("\nInstall with: gvm desktop <name>")
             return 0
 
         print("Installed Desktop Environments:\n")
         for name in sorted(installed):
             desktop = desktops[name]
-            print(f"  {name:<20} {desktop.description}")
+            display = desktop.display_name or name
+            print(f"  {name:<18} {display:<18} {desktop.description}")
 
         print("\nStart with: gvm start <name>")
         return 0
@@ -342,20 +368,23 @@ def cmd_start(
 
             print("Multiple desktops installed. Please specify which to start:")
             for name in sorted(installed):
-                print(f"  gvm start {name.lower().replace(' ', '-')}")
+                print(f"  gvm start {name}")
             return 1
 
         if verbose:
-            print(f"Starting default desktop: {desktop_name}")
+            desktops = config.discover_desktops()
+            display = desktops[desktop_name].display_name if desktop_name in desktops else desktop_name
+            print(f"Starting default desktop: {display} ({desktop_name})")
     else:
-        # Resolve user input to actual desktop name
+        # Resolve user input to canonical desktop name
         resolved = resolve_desktop_name(config, desktop_name)
         if resolved is None:
             desktops = config.discover_desktops()
             print(f"Error: Desktop '{desktop_name}' not found")
             print("Available desktops:")
             for name in sorted(desktops.keys()):
-                print(f"  {name.lower().replace(' ', '-')} ({name})")
+                display = desktops[name].display_name or name
+                print(f"  {name:<18} ({display})")
             return 1
         desktop_name = resolved
 

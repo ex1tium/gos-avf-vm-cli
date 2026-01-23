@@ -521,8 +521,9 @@ def cmd_setup(args: argparse.Namespace, config: Config) -> int:
             print("\nAvailable desktop environments:")
             desktop_list = sorted(desktops.keys())
             for i, name in enumerate(desktop_list, 1):
+                display = desktops[name].display_name or name
                 desc = desktops[name].description or ""
-                print(f"  {i}. {name} - {desc}")
+                print(f"  {i}. {display} ({name}) - {desc}")
             print(f"  {len(desktop_list) + 1}. Install all desktops")
             print(f"  {len(desktop_list) + 2}. Skip desktop installation")
 
@@ -720,17 +721,19 @@ def cmd_desktop(args: argparse.Namespace, config: Config) -> int:
             return 0
 
         print("Available Desktop Environments:\n")
-        print(f"{'Name':<20} {'Description':<50}")
-        print("-" * 70)
+        print(f"{'ID':<18} {'Name':<18} {'Description':<40}")
+        print("-" * 78)
 
         for name, desktop_config in sorted(desktops.items()):
+            display = desktop_config.display_name or name
             desc = desktop_config.description or "No description"
             # Truncate description if too long
-            if len(desc) > 47:
-                desc = desc[:47] + "..."
-            print(f"{name:<20} {desc:<50}")
+            if len(desc) > 37:
+                desc = desc[:37] + "..."
+            print(f"{name:<18} {display:<18} {desc:<40}")
 
         print("\nUse 'gvm desktop <name>' to install a desktop environment.")
+        print("Example: gvm desktop plasma-mobile")
         return 0
 
     # Install specific desktop
@@ -744,7 +747,8 @@ def cmd_desktop(args: argparse.Namespace, config: Config) -> int:
         print(f"Error: Desktop '{target}' not found.")
         print("Available desktops:")
         for name in sorted(desktops.keys()):
-            print(f"  {name.lower().replace(' ', '-')} ({name})")
+            display = desktops[name].display_name or name
+            print(f"  {name:<18} ({display})")
         return 1
     target = resolved
 

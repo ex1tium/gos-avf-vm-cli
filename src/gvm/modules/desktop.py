@@ -53,12 +53,16 @@ class DesktopModule(Module):
             verbose: Enable verbose output.
             dry_run: Simulate execution without making changes.
             desktop_name: Optional specific desktop to install. If not provided,
-                         falls back to config.selected_desktop.
+                         falls back to config.selected_desktop or _selected_desktops.
         """
         super().__init__(config, verbose, dry_run)
         self.marker_path = Path("/etc/gvm/desktop-installed")
         # Use explicit desktop_name, or fall back to config.selected_desktop
         self.desktop_name = desktop_name or config.selected_desktop
+        # Support multiple desktop selections from TUI
+        self.desktop_names: list[str] = getattr(config, '_selected_desktops', None) or []
+        if self.desktop_name and self.desktop_name not in self.desktop_names:
+            self.desktop_names = [self.desktop_name]
 
     def is_installed(self) -> tuple[bool, str]:
         """Check if desktop environment is already installed.
@@ -113,8 +117,22 @@ class DesktopModule(Module):
                     recovery_command=self.get_recovery_command(),
                 )
 
-            # Validate requested desktop exists
-            if self.desktop_name:
+            # Validate and build list of desktops to install
+            if self.desktop_names:
+                # Multiple desktops requested
+                desktops_to_install = {}
+                for name in self.desktop_names:
+                    if name not in desktops:
+                        available = ", ".join(desktops.keys())
+                        return ModuleResult(
+                            status=ModuleStatus.FAILED,
+                            message=f"Desktop '{name}' not found",
+                            details=f"Available desktops: {available}",
+                            recovery_command=self.get_recovery_command(),
+                        )
+                    desktops_to_install[name] = desktops[name]
+            elif self.desktop_name:
+                # Single desktop requested
                 if self.desktop_name not in desktops:
                     available = ", ".join(desktops.keys())
                     return ModuleResult(
@@ -125,7 +143,14 @@ class DesktopModule(Module):
                     )
                 desktops_to_install = {self.desktop_name: desktops[self.desktop_name]}
             else:
-                desktops_to_install = desktops
+                # No desktop specified - require explicit selection
+                available = ", ".join(desktops.keys())
+                return ModuleResult(
+                    status=ModuleStatus.FAILED,
+                    message="No desktop specified for installation",
+                    details=f"Available desktops: {available}\nUse: gvm desktop <name>",
+                    recovery_command=self.get_recovery_command(),
+                )
 
             installed_names: list[str] = []
             total_desktops = len(desktops_to_install)

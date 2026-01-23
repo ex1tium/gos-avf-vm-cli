@@ -6,7 +6,8 @@
 # The session starts directly without a login manager.
 
 [meta]
-name = "XFCE4"
+name = "xfce4"
+display_name = "XFCE4"
 description = "Lightweight XFCE4 desktop (X11 via XWayland)"
 type = "desktop"
 
@@ -151,3 +152,9 @@ start_command = "~/.local/bin/xfce4-xwayland-session"
 fallback_command = "xfce4-session"
 requires_dbus_session = true
 helper_script_name = "start-xfce4"
+
+[conflicts]
+# XFCE4 uses X11 via Xwayland, which can coexist with Wayland desktops
+# No hard conflicts
+desktops = []
+packages = []

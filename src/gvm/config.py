@@ -113,7 +113,8 @@ class DesktopConfig:
     """Configuration for a desktop environment.
 
     Attributes:
-        name: Desktop environment name.
+        name: Canonical desktop identifier (lowercase, hyphenated, e.g., 'plasma-mobile').
+        display_name: Human-readable name for UI display (e.g., 'Plasma Mobile').
         description: Human-readable description.
         packages_core: Required packages for the desktop.
         packages_optional: Nice-to-have packages.
@@ -125,9 +126,12 @@ class DesktopConfig:
         session_fallback_command: Fallback if primary fails.
         session_requires_dbus: Whether to wrap with dbus-run-session.
         session_helper_script_name: Name for helper script.
+        conflicts_with: List of desktop names this desktop conflicts with.
+        conflict_packages: Packages that conflict with this desktop.
     """
 
     name: str
+    display_name: str = ""
     description: str = ""
     packages_core: list[str] = field(default_factory=list)
     packages_optional: list[str] = field(default_factory=list)
@@ -139,6 +143,8 @@ class DesktopConfig:
     session_fallback_command: str = ""
     session_requires_dbus: bool = True
     session_helper_script_name: str = ""
+    conflicts_with: list[str] = field(default_factory=list)
+    conflict_packages: list[str] = field(default_factory=list)
 
     @classmethod
     def from_toml(cls, toml_path: Path) -> DesktopConfig:
@@ -163,13 +169,18 @@ class DesktopConfig:
         environment = data.get("environment", {})
         files = data.get("files", {})
         session = data.get("session", {})
+        conflicts = data.get("conflicts", {})
 
         name = meta.get("name")
         if not name:
             raise SystemExit(f"Desktop config '{toml_path}' missing required 'meta.name'")
 
+        # Display name defaults to name if not provided
+        display_name = meta.get("display_name", name)
+
         return cls(
             name=name,
+            display_name=display_name,
             description=meta.get("description", ""),
             packages_core=packages.get("core", []),
             packages_optional=packages.get("optional", []),
@@ -181,6 +192,8 @@ class DesktopConfig:
             session_fallback_command=session.get("fallback_command", ""),
             session_requires_dbus=session.get("requires_dbus_session", True),
             session_helper_script_name=session.get("helper_script_name", ""),
+            conflicts_with=conflicts.get("desktops", []),
+            conflict_packages=conflicts.get("packages", []),
         )
 
     def get_all_packages(self) -> list[str]:

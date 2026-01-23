@@ -62,65 +62,77 @@ fi
 """
 
 # Custom startup script for KDE Plasma on AVF
-# This handles systemd --user session initialization
+# Bypasses systemd-logind requirement by using kwin_wayland directly
 "~/.local/bin/plasma-session" = """#!/bin/bash
 # KDE Plasma session launcher for GrapheneOS AVF
-# Handles systemd user session initialization
+# Uses kwin_wayland directly to bypass systemd-logind dependency
+# See: https://community.kde.org/KWin/Wayland
 
 set -e
 
-# Ensure XDG_RUNTIME_DIR exists
+echo "=== KDE Plasma Session Launcher (AVF) ==="
+
+# Step 1: Set up XDG_RUNTIME_DIR BEFORE dbus-launch
+# This must exist before any Wayland/D-Bus operations
 if [ -z "$XDG_RUNTIME_DIR" ]; then
     export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 fi
 
-# Create runtime dir if it doesn't exist
+echo "XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR"
+
+# Create runtime dir if it doesn't exist (with proper permissions)
 if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+    echo "Creating XDG_RUNTIME_DIR..."
     sudo mkdir -p "$XDG_RUNTIME_DIR"
-    sudo chown $(id -u):$(id -g) "$XDG_RUNTIME_DIR"
+    sudo chown "$(id -u):$(id -g)" "$XDG_RUNTIME_DIR"
     sudo chmod 700 "$XDG_RUNTIME_DIR"
 fi
 
-# Start systemd user session if not already running
-# This is required for Plasma's session management
-if command -v systemctl >/dev/null 2>&1; then
-    if ! systemctl --user is-active --quiet default.target 2>/dev/null; then
-        echo "Starting systemd user session..."
-        # Try to start systemd --user in background
-        systemctl --user daemon-reload 2>/dev/null || true
-        systemctl --user start default.target 2>/dev/null || true
-        # Give it a moment to initialize
-        sleep 1
-    fi
+# Step 2: Set up D-Bus session if not already available
+# This is critical - kwin_wayland needs D-Bus for IPC
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    echo "Starting D-Bus session..."
+    eval "$(dbus-launch --sh-syntax)"
+    export DBUS_SESSION_BUS_ADDRESS
+    echo "D-Bus session started: $DBUS_SESSION_BUS_ADDRESS"
 fi
 
-# Set session type
+# Step 3: Set session type environment variables
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_CLASS=user
 export XDG_CURRENT_DESKTOP=KDE
 
-# Wayland environment
+# KDE-specific session variables
+export KDE_FULL_SESSION=true
+export KDE_SESSION_VERSION=6
+
+# Step 4: Wayland environment for Qt/GTK apps
 export QT_QPA_PLATFORM=wayland
 export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 export GDK_BACKEND=wayland
 export MOZ_ENABLE_WAYLAND=1
 export SDL_VIDEODRIVER=wayland
 export WLR_NO_HARDWARE_CURSORS=1
+export CLUTTER_BACKEND=wayland
 
-# Try startplasma-wayland first, fall back to direct kwin if it fails
-if command -v startplasma-wayland >/dev/null 2>&1; then
-    exec startplasma-wayland
-else
-    # Direct fallback: run kwin_wayland with plasmashell
-    exec kwin_wayland --xwayland --exit-with-session plasmashell
-fi
+# Force software cursor (better compatibility with virtio-gpu)
+export KWIN_FORCE_SW_CURSOR=1
+
+# Step 5: Launch kwin_wayland directly with plasmashell
+# NOTE: We intentionally skip startplasma-wayland because it requires systemd-logind
+# The --exit-with-session flag makes kwin exit when plasmashell exits
+echo "Starting kwin_wayland with Plasma Desktop shell..."
+
+# Use the default plasmashell for standard Plasma Desktop
+exec kwin_wayland --xwayland --exit-with-session plasmashell
 """
 
 [session]
-# Use our custom wrapper script that handles systemd --user
+# Use our custom wrapper script that handles D-Bus and bypasses systemd
+# Note: requires_dbus_session is false because the script handles D-Bus internally
 start_command = "~/.local/bin/plasma-session"
 fallback_command = "kwin_wayland --xwayland --exit-with-session plasmashell"
-requires_dbus_session = true
+requires_dbus_session = false
 helper_script_name = "start-plasma"
 
 [conflicts]

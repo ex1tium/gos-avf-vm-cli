@@ -474,8 +474,9 @@ class ModuleOrchestrator:
                     # Dependency wasn't in the execution list (shouldn't happen
                     # after resolve_dependencies, but handle defensively)
                     failed_required_deps.append(dep_name)
-                elif dep_result.status != ModuleStatus.SUCCESS:
+                elif dep_result.status not in (ModuleStatus.SUCCESS, ModuleStatus.SKIPPED):
                     # Required dependency did not succeed
+                    # Note: SKIPPED means already installed, which satisfies the dependency
                     failed_required_deps.append(dep_name)
 
             if failed_required_deps:

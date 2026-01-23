@@ -1008,6 +1008,54 @@ class TestDependencyResolution(unittest.TestCase):
         # (depending on how dependencies are defined in SSHModule)
         self.assertIn("apt", results)
 
+    @mock.patch("gvm.modules.ssh.SSHModule.run")
+    @mock.patch("gvm.modules.ssh.SSHModule.is_installed")
+    @mock.patch("gvm.modules.apt.APTModule.run")
+    @mock.patch("gvm.modules.apt.APTModule.is_installed")
+    def test_skipped_dependency_satisfies_requirements(
+        self,
+        mock_apt_installed: mock.Mock,
+        mock_apt_run: mock.Mock,
+        mock_ssh_installed: mock.Mock,
+        mock_ssh_run: mock.Mock,
+    ) -> None:
+        """When required dependency is SKIPPED (already installed), dependent modules still run.
+
+        This tests idempotency: on a second run where apt is already installed
+        (and thus skipped), modules that depend on apt should still execute.
+        """
+        # APT is already installed - will be skipped
+        mock_apt_installed.return_value = (True, "APT already configured")
+        # apt.run() shouldn't be called since it's already installed
+
+        # SSH is not installed - should run
+        mock_ssh_installed.return_value = (False, "Not configured")
+        mock_ssh_run.return_value = ModuleResult(
+            status=ModuleStatus.SUCCESS, message="SSH configured"
+        )
+
+        orchestrator = ModuleOrchestrator(self.config)
+
+        results = orchestrator.execute(["apt", "ssh"])
+
+        # APT should be skipped (already installed)
+        self.assertIn("apt", results)
+        self.assertEqual(results["apt"].status, ModuleStatus.SKIPPED)
+
+        # SSH should have run successfully (its dependency apt was skipped but satisfied)
+        self.assertIn("ssh", results)
+        self.assertEqual(
+            results["ssh"].status,
+            ModuleStatus.SUCCESS,
+            "SSH should run when its dependency (apt) is skipped due to being already installed",
+        )
+
+        # Verify apt.run was NOT called (it was skipped)
+        mock_apt_run.assert_not_called()
+
+        # Verify ssh.run WAS called
+        mock_ssh_run.assert_called_once()
+
 
 class TestCLIRouting(unittest.TestCase):
     """Test CLI command routing to handler functions."""

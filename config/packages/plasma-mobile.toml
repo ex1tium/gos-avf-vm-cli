@@ -59,25 +59,24 @@ fi
 """
 
 # Wrapper script for plasmashell with mobile profile
-# This is called by kwin_wayland --exit-with-session
+# This is called by kwin_wayland as the session command
+# Based on: https://invent.kde.org/plasma/plasma-mobile/-/blob/master/bin/startplasmamobile.in
 "~/.local/bin/plasmashell-mobile" = """#!/bin/bash
-# Wrapper to launch plasmashell with mobile profile
+# Wrapper to launch plasmashell with mobile shell
 echo "plasmashell-mobile: Starting plasmashell with mobile shell..."
 
-# Ensure wayland platform
-export QT_QPA_PLATFORM=wayland
-
-# Try to start with mobile shell - if it fails, the error will be visible
-# The mobile shell package is org.kde.plasma.mobileshell (installed by plasma-mobile-core)
-exec plasmashell -p org.kde.plasma.mobileshell
+# The PLASMA_DEFAULT_SHELL env var tells plasmashell which shell to use
+# This is set by plasma-mobile-session before calling this script
+# Just run plasmashell - it will pick up the shell from environment
+exec plasmashell
 """
 
 # Custom startup script for Plasma Mobile on AVF
-# Bypasses systemd-logind requirement by using kwin_wayland directly
+# Based on postmarketOS plasma-mobile startup with AVF adaptations
+# See: https://wiki.postmarketos.org/wiki/Plasma_Mobile
 "~/.local/bin/plasma-mobile-session" = """#!/bin/bash
 # Plasma Mobile session launcher for GrapheneOS AVF
 # Uses kwin_wayland directly to bypass systemd-logind dependency
-# See: https://community.kde.org/KWin/Wayland
 
 echo "=== Plasma Mobile Session Launcher (AVF) ==="
 
@@ -118,7 +117,6 @@ cleanup() {
 trap cleanup INT TERM HUP QUIT EXIT
 
 # Step 1: Set up XDG_RUNTIME_DIR BEFORE dbus-launch
-# This must exist before any Wayland/D-Bus operations
 if [ -z "$XDG_RUNTIME_DIR" ]; then
     export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 fi
@@ -134,7 +132,6 @@ if [ ! -d "$XDG_RUNTIME_DIR" ]; then
 fi
 
 # Step 2: Set up D-Bus session if not already available
-# This is critical - kwin_wayland needs D-Bus for IPC
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     echo "Starting D-Bus session..."
     eval "$(dbus-launch --sh-syntax)"
@@ -143,44 +140,71 @@ if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     echo "D-Bus session started: $DBUS_SESSION_BUS_ADDRESS (PID: $DBUS_PID)"
 fi
 
-# Step 3: Set session type environment variables
+# Step 3: Session type environment variables
 export XDG_SESSION_TYPE=wayland
 export XDG_SESSION_CLASS=user
 export XDG_CURRENT_DESKTOP=KDE
 
-# KDE-specific session variables
+# Step 4: KDE/Plasma Mobile specific environment
+# From official KDE source: https://invent.kde.org/plasma/plasma-mobile/-/blob/master/bin/startplasmamobile.in
 export KDE_FULL_SESSION=true
 export KDE_SESSION_VERSION=6
+export QT_QPA_PLATFORMTHEME=KDE
+export EGL_PLATFORM=wayland
+export QT_QUICK_CONTROLS_STYLE=org.kde.breeze
+export QT_ENABLE_GLYPH_CACHE_WORKAROUND=1
+export QT_QUICK_CONTROLS_MOBILE=true
+export PLASMA_INTEGRATION_USE_PORTAL=1
+export PLASMA_PLATFORM=phone:handset
 
-# Step 4: Wayland environment for Qt/GTK apps
+# KEY: This tells plasmashell to use the mobile shell
+export PLASMA_DEFAULT_SHELL=org.kde.plasma.mobileshell
+
+# Add plasma-mobile config directory
+export XDG_CONFIG_DIRS="$HOME/.config/plasma-mobile:/etc/xdg:$XDG_CONFIG_DIRS"
+
+# Step 5: Wayland environment for Qt/GTK apps
 export QT_QPA_PLATFORM=wayland
 export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 export GDK_BACKEND=wayland
 export MOZ_ENABLE_WAYLAND=1
 export SDL_VIDEODRIVER=wayland
-export WLR_NO_HARDWARE_CURSORS=1
 export CLUTTER_BACKEND=wayland
 
-# Force software cursor (better compatibility with virtio-gpu)
+# Step 6: Graphics/cursor settings for virtio-gpu
+export WLR_NO_HARDWARE_CURSORS=1
 export KWIN_FORCE_SW_CURSOR=1
 
-# Step 5: Launch kwin_wayland with plasmashell wrapper
-# NOTE: We use a wrapper script because --exit-with-session doesn't handle arguments well
-echo "Starting kwin_wayland with Plasma Mobile shell..."
-echo "Plasmashell wrapper: $HOME/.local/bin/plasmashell-mobile"
+# Give the display a moment to be ready
+sleep 2
 
-# Verify wrapper script exists
+# Step 7: Verify wrapper script exists
 if [ ! -x "$HOME/.local/bin/plasmashell-mobile" ]; then
     echo "ERROR: plasmashell-mobile wrapper not found or not executable!"
     echo "Run: ./gvm desktop plasma-mobile --force"
     exit 1
 fi
 
-# Use $HOME instead of ~ for proper expansion
-kwin_wayland --xwayland --exit-with-session="$HOME/.local/bin/plasmashell-mobile" &
-KWIN_PID=$!
-echo "kwin_wayland PID: $KWIN_PID"
+# Step 8: Launch kwin_wayland
+# AVF provides a Wayland compositor, so kwin runs as a nested compositor
+# Check if we have DRI for hardware acceleration
+echo "Starting kwin_wayland with Plasma Mobile shell..."
 
+if [ -d "/dev/dri" ]; then
+    echo "Using hardware rendering (virtio-gpu)"
+    # For AVF: run as Wayland client (no --drm), use plasmashell-mobile wrapper
+    kwin_wayland --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+    KWIN_PID=$!
+else
+    echo "No /dev/dri found, using software rendering"
+    export GALLIUM_DRIVER=softpipe
+    export KWIN_COMPOSE=Q
+    export LIBGL_ALWAYS_SOFTWARE=1
+    kwin_wayland --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+    KWIN_PID=$!
+fi
+
+echo "kwin_wayland PID: $KWIN_PID"
 echo ""
 echo "Press Ctrl+C to stop the session"
 echo ""
@@ -200,7 +224,7 @@ exit $EXIT_CODE
 # Use our custom wrapper script that handles D-Bus and bypasses systemd
 # Note: requires_dbus_session is false because the script handles D-Bus internally
 start_command = "~/.local/bin/plasma-mobile-session"
-fallback_command = "kwin_wayland --xwayland --exit-with-session=$HOME/.local/bin/plasmashell-mobile"
+fallback_command = "kwin_wayland --xwayland plasmashell"
 requires_dbus_session = false
 helper_script_name = "start-plasma-mobile"
 

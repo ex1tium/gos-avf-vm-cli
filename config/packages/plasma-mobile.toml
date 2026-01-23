@@ -120,15 +120,16 @@ export KWIN_FORCE_SW_CURSOR=1
 # The --exit-with-session flag makes kwin exit when plasmashell exits
 echo "Starting kwin_wayland with Plasma Mobile shell..."
 
-# Use the plasma.phone shell for Plasma Mobile
-exec kwin_wayland --xwayland --exit-with-session plasmashell -p org.kde.plasma.phone
+# Use the mobile shell profile for Plasma Mobile
+# The -p argument belongs to plasmashell, so we quote it together
+exec kwin_wayland --xwayland --exit-with-session "plasmashell -p org.kde.plasma.mobileshell"
 """
 
 [session]
 # Use our custom wrapper script that handles D-Bus and bypasses systemd
 # Note: requires_dbus_session is false because the script handles D-Bus internally
 start_command = "~/.local/bin/plasma-mobile-session"
-fallback_command = "kwin_wayland --xwayland --exit-with-session plasmashell -p org.kde.plasma.phone"
+fallback_command = "kwin_wayland --xwayland --exit-with-session 'plasmashell -p org.kde.plasma.mobileshell'"
 requires_dbus_session = false
 helper_script_name = "start-plasma-mobile"
 

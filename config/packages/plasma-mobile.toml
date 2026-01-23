@@ -13,6 +13,9 @@ core = [
     "plasma-settings",
     "plasma-mobile-tweaks",
     "maliit-keyboard",
+    # Seat management for DRM access (required since systemd-logind doesn't work in AVF)
+    "seatd",
+    "libseat1",
 ]
 optional = [
     "angelfish",
@@ -185,9 +188,8 @@ if [ ! -x "$HOME/.local/bin/plasmashell-mobile" ]; then
     exit 1
 fi
 
-# Step 8: Launch kwin_wayland
-# In AVF, virtio-gpu provides /dev/dri - kwin needs --drm to render to it
-echo "Starting kwin_wayland with Plasma Mobile shell..."
+# Step 8: Launch compositor
+# DRM access requires either logind session OR seatd
 
 # List available DRI devices
 if [ -d "/dev/dri" ]; then
@@ -195,19 +197,49 @@ if [ -d "/dev/dri" ]; then
     ls -la /dev/dri/
 fi
 
-if [ -d "/dev/dri" ]; then
-    echo "Using DRM backend (virtio-gpu)"
-    # --drm tells kwin to use DRM/KMS to access the GPU directly
-    # This is how the display appears in AVF viewer
-    kwin_wayland --drm --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+# Check for existing Wayland socket from AVF host
+if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+    echo "Found AVF Wayland socket: $WAYLAND_DISPLAY"
+    echo "Running kwin as nested compositor..."
+    kwin_wayland --xwayland "$HOME/.local/bin/plasmashell-mobile" &
     KWIN_PID=$!
+elif [ -d "/dev/dri" ]; then
+    echo "Attempting DRM backend for display..."
+
+    # Check if seatd is running (alternative to logind for seat management)
+    if systemctl is-active --quiet seatd 2>/dev/null; then
+        echo "seatd is active - using it for DRM access"
+        export LIBSEAT_BACKEND=seatd
+        kwin_wayland --drm --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+        KWIN_PID=$!
+    elif pgrep -x seatd >/dev/null 2>&1; then
+        echo "seatd process found - using it for DRM access"
+        export LIBSEAT_BACKEND=seatd
+        kwin_wayland --drm --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+        KWIN_PID=$!
+    else
+        echo ""
+        echo "=========================================="
+        echo "DRM access requires seat management!"
+        echo ""
+        echo "Since systemd-logind is not available in AVF,"
+        echo "you need to install and enable seatd:"
+        echo ""
+        echo "  sudo apt install -y seatd libseat1"
+        echo "  sudo systemctl enable --now seatd"
+        echo "  sudo usermod -aG _seatd $USER"
+        echo "  # Then reboot the VM"
+        echo ""
+        echo "After that, run: gvm start plasma-mobile"
+        echo "=========================================="
+        echo ""
+        exit 1
+    fi
 else
-    echo "No /dev/dri found, trying software rendering with framebuffer"
+    echo "No /dev/dri found, trying software rendering"
     export GALLIUM_DRIVER=softpipe
-    export KWIN_COMPOSE=Q
     export LIBGL_ALWAYS_SOFTWARE=1
-    # Try framebuffer as fallback
-    kwin_wayland --framebuffer --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+    kwin_wayland --virtual --xwayland "$HOME/.local/bin/plasmashell-mobile" &
     KWIN_PID=$!
 fi
 

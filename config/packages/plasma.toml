@@ -12,6 +12,7 @@ type = "desktop"
 core = [
     "plasma-desktop",
     "plasma-workspace",
+    "kio-extras",
     "sddm",  # Display manager (disabled by gvm)
     "konsole",
     "dolphin",
@@ -29,7 +30,6 @@ optional = [
     "kde-spectacle",  # Screenshot tool
 ]
 wayland_helpers = [
-    "plasma-workspace-wayland",
     "xwayland",
 ]
 user_packages = []

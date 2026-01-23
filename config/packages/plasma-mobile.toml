@@ -15,6 +15,9 @@ core = [
     "maliit-keyboard",
     # Required daemons that plasmashell needs
     "kactivitymanagerd",
+    # Required for application menu (kbuildsycoca6 needs applications.menu)
+    "plasma-workspace",
+    "kio-extras",
     # Seat management for DRM access (required since systemd-logind doesn't work in AVF)
     "seatd",
     "libseat1",

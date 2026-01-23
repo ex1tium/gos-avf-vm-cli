@@ -34,6 +34,12 @@ vars = [
 ]
 
 [files]
+# Disable notification daemon - AVF's Wayland compositor doesn't support wlr-layer-shell
+# which is required for overlay notifications
+"~/.config/autostart/xfce4-notifyd.desktop" = """[Desktop Entry]
+Hidden=true
+"""
+
 # XFCE4 session startup script that finds an available display
 "~/.local/bin/xfce4-xwayland-session" = """#!/bin/bash
 # Start Xwayland with XFCE4 session

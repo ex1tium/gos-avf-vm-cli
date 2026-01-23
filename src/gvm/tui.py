@@ -600,10 +600,13 @@ class CursesTUI:
         )
 
         # Create orchestrator
+        # Note: force=True ensures modules always run even if is_installed() returns True
+        # This is important for TUI setup to ensure all config files are created
         orchestrator = ModuleOrchestrator(
             self.config,
             verbose=self.verbose,
             dry_run=self.dry_run,
+            force=True,
         )
 
         # Progress callback

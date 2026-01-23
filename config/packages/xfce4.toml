@@ -87,6 +87,12 @@ Categories=Utility;Accessibility;
 # Start Xwayland with XFCE4 session
 # Finds an available display number to avoid conflicts
 
+echo "=== XFCE4 Session Launcher (AVF) ==="
+
+# Track child PIDs for cleanup
+XWAYLAND_PID=""
+XFCE_PID=""
+
 # Find an available display number
 find_free_display() {
     for i in $(seq 1 10); do
@@ -98,11 +104,47 @@ find_free_display() {
     echo "1"  # fallback
 }
 
+# Cleanup function - kill all related processes
+cleanup() {
+    echo ""
+    echo "Shutting down XFCE4 session..."
+
+    # Kill XFCE4 processes
+    if [ -n "$XFCE_PID" ] && kill -0 "$XFCE_PID" 2>/dev/null; then
+        kill -TERM "$XFCE_PID" 2>/dev/null
+        sleep 1
+        kill -KILL "$XFCE_PID" 2>/dev/null
+    fi
+
+    # Also try by name as fallback
+    pkill -TERM -u "$(id -u)" xfce4-session 2>/dev/null
+    sleep 0.5
+    pkill -KILL -u "$(id -u)" xfce4-session 2>/dev/null
+
+    # Kill Xwayland
+    if [ -n "$XWAYLAND_PID" ] && kill -0 "$XWAYLAND_PID" 2>/dev/null; then
+        kill -TERM "$XWAYLAND_PID" 2>/dev/null
+        sleep 0.5
+        kill -KILL "$XWAYLAND_PID" 2>/dev/null
+    fi
+
+    # Clean up lock file
+    rm -f "/tmp/.X${DISPLAY_NUM}-lock" 2>/dev/null
+
+    echo "XFCE4 session ended."
+    exit 0
+}
+
+# Trap signals for clean shutdown
+trap cleanup INT TERM HUP QUIT EXIT
+
 DISPLAY_NUM=$(find_free_display)
 export DISPLAY=":${DISPLAY_NUM}"
 
 # Clean up any stale lock files for this display
 rm -f "/tmp/.X${DISPLAY_NUM}-lock" 2>/dev/null
+
+echo "Starting Xwayland on display :${DISPLAY_NUM}..."
 
 # Start Xwayland in the background with access control disabled
 Xwayland ":${DISPLAY_NUM}" -ac &
@@ -113,21 +155,34 @@ sleep 2
 
 # Verify Xwayland started
 if ! kill -0 $XWAYLAND_PID 2>/dev/null; then
-    echo "Failed to start Xwayland"
+    echo "ERROR: Failed to start Xwayland"
+    trap - EXIT
     exit 1
 fi
 
-# Trap to clean up Xwayland on exit
-cleanup() {
-    kill $XWAYLAND_PID 2>/dev/null
-    rm -f "/tmp/.X${DISPLAY_NUM}-lock" 2>/dev/null
-}
-trap cleanup EXIT
-
+echo "Xwayland PID: $XWAYLAND_PID"
 echo "Starting XFCE4 on display $DISPLAY"
+echo ""
+echo "Press Ctrl+C to stop the session"
+echo ""
 
-# Start XFCE4 session directly (bypasses login manager)
-exec startxfce4
+# Start XFCE4 session in background so we can handle signals
+startxfce4 &
+XFCE_PID=$!
+
+# Wait for XFCE to exit (or be killed by signal)
+wait $XFCE_PID 2>/dev/null
+EXIT_CODE=$?
+
+# Remove EXIT trap since we're exiting normally
+trap - EXIT
+
+# Clean up Xwayland
+kill -TERM "$XWAYLAND_PID" 2>/dev/null
+rm -f "/tmp/.X${DISPLAY_NUM}-lock" 2>/dev/null
+
+echo "XFCE4 exited with code: $EXIT_CODE"
+exit $EXIT_CODE
 """
 
 # Script to disable display manager on first run

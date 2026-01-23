@@ -62,7 +62,13 @@ fi
 # This is called by kwin_wayland --exit-with-session
 "~/.local/bin/plasmashell-mobile" = """#!/bin/bash
 # Wrapper to launch plasmashell with mobile profile
+echo "plasmashell-mobile: Starting plasmashell with mobile shell..."
+
+# Ensure wayland platform
 export QT_QPA_PLATFORM=wayland
+
+# Try to start with mobile shell - if it fails, the error will be visible
+# The mobile shell package is org.kde.plasma.mobileshell (installed by plasma-mobile-core)
 exec plasmashell -p org.kde.plasma.mobileshell
 """
 
@@ -75,17 +81,41 @@ exec plasmashell -p org.kde.plasma.mobileshell
 
 echo "=== Plasma Mobile Session Launcher (AVF) ==="
 
-# Trap signals for clean shutdown
+# Track child PIDs for cleanup
 KWIN_PID=""
+DBUS_PID=""
+
+# Cleanup function - kill all related processes
 cleanup() {
+    echo ""
     echo "Shutting down Plasma Mobile session..."
+
+    # Kill plasmashell first (gracefully)
+    pkill -TERM -u "$(id -u)" plasmashell 2>/dev/null
+
+    # Kill kwin_wayland
     if [ -n "$KWIN_PID" ] && kill -0 "$KWIN_PID" 2>/dev/null; then
-        kill "$KWIN_PID" 2>/dev/null
-        wait "$KWIN_PID" 2>/dev/null
+        kill -TERM "$KWIN_PID" 2>/dev/null
+        sleep 1
+        kill -KILL "$KWIN_PID" 2>/dev/null
     fi
+
+    # Also try by name as fallback
+    pkill -TERM -u "$(id -u)" kwin_wayland 2>/dev/null
+    sleep 0.5
+    pkill -KILL -u "$(id -u)" kwin_wayland 2>/dev/null
+
+    # Kill dbus-daemon if we started it
+    if [ -n "$DBUS_PID" ] && kill -0 "$DBUS_PID" 2>/dev/null; then
+        kill -TERM "$DBUS_PID" 2>/dev/null
+    fi
+
+    echo "Plasma Mobile session ended."
     exit 0
 }
-trap cleanup INT TERM HUP
+
+# Trap signals for clean shutdown
+trap cleanup INT TERM HUP QUIT EXIT
 
 # Step 1: Set up XDG_RUNTIME_DIR BEFORE dbus-launch
 # This must exist before any Wayland/D-Bus operations
@@ -108,8 +138,9 @@ fi
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
     echo "Starting D-Bus session..."
     eval "$(dbus-launch --sh-syntax)"
+    DBUS_PID="$DBUS_DAEMON_PID"
     export DBUS_SESSION_BUS_ADDRESS
-    echo "D-Bus session started: $DBUS_SESSION_BUS_ADDRESS"
+    echo "D-Bus session started: $DBUS_SESSION_BUS_ADDRESS (PID: $DBUS_PID)"
 fi
 
 # Step 3: Set session type environment variables
@@ -136,13 +167,33 @@ export KWIN_FORCE_SW_CURSOR=1
 # Step 5: Launch kwin_wayland with plasmashell wrapper
 # NOTE: We use a wrapper script because --exit-with-session doesn't handle arguments well
 echo "Starting kwin_wayland with Plasma Mobile shell..."
+echo "Plasmashell wrapper: $HOME/.local/bin/plasmashell-mobile"
+
+# Verify wrapper script exists
+if [ ! -x "$HOME/.local/bin/plasmashell-mobile" ]; then
+    echo "ERROR: plasmashell-mobile wrapper not found or not executable!"
+    echo "Run: ./gvm desktop plasma-mobile --force"
+    exit 1
+fi
 
 # Use $HOME instead of ~ for proper expansion
 kwin_wayland --xwayland --exit-with-session="$HOME/.local/bin/plasmashell-mobile" &
 KWIN_PID=$!
+echo "kwin_wayland PID: $KWIN_PID"
 
-# Wait for kwin to exit
-wait $KWIN_PID
+echo ""
+echo "Press Ctrl+C to stop the session"
+echo ""
+
+# Wait for kwin to exit (or be killed by signal)
+wait $KWIN_PID 2>/dev/null
+EXIT_CODE=$?
+
+# Remove EXIT trap since we're exiting normally
+trap - EXIT
+
+echo "kwin_wayland exited with code: $EXIT_CODE"
+exit $EXIT_CODE
 """
 
 [session]

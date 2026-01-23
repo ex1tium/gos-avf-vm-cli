@@ -589,11 +589,8 @@ class CursesTUI:
             # Store all selected desktops for multi-install
             # The desktop module will handle each one
             self.config._selected_desktops = desktop_selections
-            # For single desktop, also set selected_desktop for backward compat
-            if len(desktop_selections) == 1:
-                self.config.selected_desktop = desktop_selections[0]
-            else:
-                self.config.selected_desktop = desktop_selections[0]  # Primary desktop
+            # Set primary desktop for backward compatibility
+            self.config.selected_desktop = desktop_selections[0]
             modules_to_run.append("desktop")
 
         # Initialize progress state

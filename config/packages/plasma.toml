@@ -155,10 +155,20 @@ export KWIN_FORCE_SW_CURSOR=1
 
 # Step 5: Launch kwin_wayland directly with plasmashell
 # NOTE: We intentionally skip startplasma-wayland because it requires systemd-logind
+# --drm tells kwin to use DRM/KMS to access virtio-gpu directly (for AVF display)
 echo "Starting kwin_wayland with Plasma Desktop shell..."
 
-kwin_wayland --xwayland --exit-with-session=plasmashell &
-KWIN_PID=$!
+# List DRI devices for debugging
+if [ -d "/dev/dri" ]; then
+    echo "DRI devices:"
+    ls -la /dev/dri/
+    kwin_wayland --drm --xwayland plasmashell &
+    KWIN_PID=$!
+else
+    echo "WARNING: No /dev/dri found, display may not work"
+    kwin_wayland --xwayland plasmashell &
+    KWIN_PID=$!
+fi
 echo "kwin_wayland PID: $KWIN_PID"
 
 echo ""

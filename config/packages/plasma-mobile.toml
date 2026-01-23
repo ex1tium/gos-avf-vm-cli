@@ -186,21 +186,28 @@ if [ ! -x "$HOME/.local/bin/plasmashell-mobile" ]; then
 fi
 
 # Step 8: Launch kwin_wayland
-# AVF provides a Wayland compositor, so kwin runs as a nested compositor
-# Check if we have DRI for hardware acceleration
+# In AVF, virtio-gpu provides /dev/dri - kwin needs --drm to render to it
 echo "Starting kwin_wayland with Plasma Mobile shell..."
 
+# List available DRI devices
 if [ -d "/dev/dri" ]; then
-    echo "Using hardware rendering (virtio-gpu)"
-    # For AVF: run as Wayland client (no --drm), use plasmashell-mobile wrapper
-    kwin_wayland --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+    echo "DRI devices found:"
+    ls -la /dev/dri/
+fi
+
+if [ -d "/dev/dri" ]; then
+    echo "Using DRM backend (virtio-gpu)"
+    # --drm tells kwin to use DRM/KMS to access the GPU directly
+    # This is how the display appears in AVF viewer
+    kwin_wayland --drm --xwayland "$HOME/.local/bin/plasmashell-mobile" &
     KWIN_PID=$!
 else
-    echo "No /dev/dri found, using software rendering"
+    echo "No /dev/dri found, trying software rendering with framebuffer"
     export GALLIUM_DRIVER=softpipe
     export KWIN_COMPOSE=Q
     export LIBGL_ALWAYS_SOFTWARE=1
-    kwin_wayland --xwayland "$HOME/.local/bin/plasmashell-mobile" &
+    # Try framebuffer as fallback
+    kwin_wayland --framebuffer --xwayland "$HOME/.local/bin/plasmashell-mobile" &
     KWIN_PID=$!
 fi
 

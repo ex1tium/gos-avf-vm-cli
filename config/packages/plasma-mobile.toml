@@ -15,9 +15,11 @@ core = [
     "maliit-keyboard",
     # Required daemons that plasmashell needs
     "kactivitymanagerd",
-    # Required for application menu (kbuildsycoca6 needs applications.menu)
+    # Required for application menu
     "plasma-workspace",
     "kio-extras",
+    # Required for desktop file database and application menus
+    "desktop-file-utils",
     # Seat management for DRM access (required since systemd-logind doesn't work in AVF)
     "seatd",
     "libseat1",
@@ -80,6 +82,12 @@ export QT_QUICK_CONTROLS_MOBILE=true
 export PLASMA_PLATFORM=phone:handset
 export WLR_NO_HARDWARE_CURSORS=1
 export KWIN_FORCE_SW_CURSOR=1
+# Plasma 6 uses plasma-applications.menu instead of applications.menu
+export XDG_MENU_PREFIX=plasma-
+
+# Rebuild KDE service cache (needed for application menu)
+echo "Rebuilding KDE service cache..."
+kbuildsycoca6 --noincremental 2>/dev/null || true
 
 # Check for AVF Wayland socket
 if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then

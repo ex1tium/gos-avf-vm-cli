@@ -15,6 +15,8 @@ core = [
     "sddm",  # Display manager (disabled by gvm)
     "konsole",
     "dolphin",
+    # Required daemons that plasmashell needs
+    "kactivitymanagerd",
     # Seat management for DRM access (required since systemd-logind doesn't work in AVF)
     "seatd",
     "libseat1",
@@ -158,6 +160,16 @@ export KWIN_FORCE_SW_CURSOR=1
 
 # Give the display a moment to be ready
 sleep 2
+
+# Start required KDE daemons
+# kactivitymanagerd is required for Plasma shell to load
+if command -v kactivitymanagerd >/dev/null 2>&1; then
+    if ! pgrep -x kactivitymanagerd >/dev/null 2>&1; then
+        echo "Starting kactivitymanagerd..."
+        kactivitymanagerd &
+        sleep 1
+    fi
+fi
 
 # Step 5: Launch compositor
 # DRM access requires either logind session OR seatd

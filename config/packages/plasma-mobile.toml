@@ -13,6 +13,8 @@ core = [
     "plasma-settings",
     "plasma-mobile-tweaks",
     "maliit-keyboard",
+    # Required daemons that plasmashell needs
+    "kactivitymanagerd",
     # Seat management for DRM access (required since systemd-logind doesn't work in AVF)
     "seatd",
     "libseat1",
@@ -67,6 +69,16 @@ fi
 "~/.local/bin/plasmashell-mobile" = """#!/bin/bash
 # Wrapper to launch plasmashell with mobile shell
 echo "plasmashell-mobile: Starting plasmashell with mobile shell..."
+
+# Start required KDE daemons that plasmashell needs
+# kactivitymanagerd is required for Plasma shell to load
+if command -v kactivitymanagerd >/dev/null 2>&1; then
+    if ! pgrep -x kactivitymanagerd >/dev/null 2>&1; then
+        echo "plasmashell-mobile: Starting kactivitymanagerd..."
+        kactivitymanagerd &
+        sleep 1
+    fi
+fi
 
 # The PLASMA_DEFAULT_SHELL env var tells plasmashell which shell to use
 # This is set by plasma-mobile-session before calling this script
@@ -180,6 +192,16 @@ export KWIN_FORCE_SW_CURSOR=1
 
 # Give the display a moment to be ready
 sleep 2
+
+# Start required KDE daemons BEFORE kwin
+# kactivitymanagerd is required for Plasma shell to load
+if command -v kactivitymanagerd >/dev/null 2>&1; then
+    if ! pgrep -x kactivitymanagerd >/dev/null 2>&1; then
+        echo "Starting kactivitymanagerd..."
+        kactivitymanagerd &
+        sleep 1
+    fi
+fi
 
 # Step 7: Verify wrapper script exists
 if [ ! -x "$HOME/.local/bin/plasmashell-mobile" ]; then

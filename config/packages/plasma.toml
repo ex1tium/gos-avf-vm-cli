@@ -173,9 +173,15 @@ fi
 if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
     echo "Found AVF Wayland socket: $WAYLAND_DISPLAY"
     echo "Running kwin as nested compositor on host's $WAYLAND_DISPLAY..."
+
+    # Disable features that don't work well in nested/VM mode
+    export KWIN_COMPOSE=O2  # Use OpenGL 2.0 compositing
+    export QT_LOGGING_RULES="kwin_*.debug=true"  # Enable debug logging
+
     # Use different socket name for kwin's clients to avoid conflict with host socket
+    # --no-lockscreen: disable lock screen (doesn't work well in nested mode)
     # kwin will set WAYLAND_DISPLAY=wayland-kwin for plasmashell automatically
-    kwin_wayland --socket wayland-kwin --xwayland plasmashell &
+    kwin_wayland --socket wayland-kwin --no-lockscreen --xwayland plasmashell &
     KWIN_PID=$!
 elif [ -d "/dev/dri" ]; then
     echo "Attempting DRM backend for display..."

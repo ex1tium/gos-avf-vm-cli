@@ -14,6 +14,7 @@ type = "desktop"
 core = [
     "xfce4",
     "xfce4-goodies",
+    "onboard",  # On-screen keyboard for touch input (AVF has no system keyboard in fullscreen)
 ]
 optional = [
     "firefox-esr",
@@ -38,6 +39,46 @@ vars = [
 # which is required for overlay notifications
 "~/.config/autostart/xfce4-notifyd.desktop" = """[Desktop Entry]
 Hidden=true
+"""
+
+# Autostart on-screen keyboard (minimized to system tray)
+"~/.config/autostart/onboard-autostart.desktop" = """[Desktop Entry]
+Type=Application
+Name=Onboard
+Comment=On-screen keyboard for touch input
+Exec=onboard
+Icon=onboard
+X-GNOME-Autostart-enabled=true
+"""
+
+# Onboard configuration for better touch experience
+"~/.config/onboard/onboard.conf" = """[main]
+layout=Compact
+theme=Droid
+show-status-icon=True
+start-minimized=True
+xembed-onboard=False
+
+[window]
+docking-enabled=True
+docking-edge=bottom
+
+[auto-show]
+enabled=True
+
+[typing-assistance]
+auto-capitalization=True
+"""
+
+# Desktop shortcut to toggle keyboard
+"~/Desktop/Keyboard.desktop" = """[Desktop Entry]
+Type=Application
+Name=On-Screen Keyboard
+Comment=Toggle on-screen keyboard
+Exec=dbus-send --type=method_call --dest=org.onboard.Onboard /org/onboard/Onboard/Keyboard org.onboard.Onboard.Keyboard.ToggleVisible
+Icon=onboard
+Terminal=false
+Categories=Utility;Accessibility;
 """
 
 # XFCE4 session startup script that finds an available display

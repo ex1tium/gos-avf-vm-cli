@@ -7,8 +7,6 @@ the APT module for package installation.
 
 from __future__ import annotations
 
-import secrets
-import string
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
@@ -119,18 +117,34 @@ class UserModule(Module):
         """
         return "gvm fix user"
 
-    def _generate_password(self, length: int = 12) -> str:
-        """Generate a secure random password.
-
-        Args:
-            length: Password length (default 12 characters).
+    def _prompt_for_password(self) -> str:
+        """Prompt user for password via stdin.
 
         Returns:
-            Random password string.
+            Password entered by user.
+
+        Raises:
+            RuntimeError: If no password provided.
         """
-        # Use alphanumeric characters for easy typing on mobile
-        alphabet = string.ascii_letters + string.digits
-        return ''.join(secrets.choice(alphabet) for _ in range(length))
+        import getpass
+        import sys
+
+        # Check if we have a TTY for interactive input
+        if sys.stdin.isatty():
+            print("\nSet password for 'droid' user account.")
+            print("This password is needed for sudo and login screens.\n")
+            password = getpass.getpass("Enter password: ")
+            if not password:
+                raise RuntimeError("Password is required. Please provide a password.")
+            confirm = getpass.getpass("Confirm password: ")
+            if password != confirm:
+                raise RuntimeError("Passwords do not match.")
+            return password
+        else:
+            raise RuntimeError(
+                "Password is required but no TTY available for input.\n"
+                "Provide password via config file [user] section or run interactively."
+            )
 
     def _set_droid_password(
         self,
@@ -142,23 +156,31 @@ class UserModule(Module):
             progress_callback: Callback to report progress.
 
         Returns:
-            The generated password.
+            The password that was set.
+
+        Raises:
+            RuntimeError: If no password provided.
         """
         self._report_progress(
             progress_callback,
             0.1,
             "Setting password for droid user",
-            "Generating secure password",
+            "Configuring user password",
         )
 
-        # Check if user wants a custom password from config
-        user_settings = self.config.user if hasattr(self.config, 'user') else {}
-        custom_password = user_settings.get("password") if isinstance(user_settings, dict) else None
+        # Check for password from TUI settings or config file
+        # TUI stores settings in _user_settings, config file uses 'user' section
+        tui_settings = getattr(self.config, '_user_settings', {}) or {}
+        config_settings = getattr(self.config, 'user', {}) or {}
 
-        if custom_password:
-            password = custom_password
-        else:
-            password = self._generate_password()
+        # TUI settings take precedence over config file
+        password = tui_settings.get("password") or (
+            config_settings.get("password") if isinstance(config_settings, dict) else None
+        )
+
+        # If no password provided, prompt for it (CLI mode)
+        if not password:
+            password = self._prompt_for_password()
 
         if self.dry_run:
             print(f"[DRY RUN] Would set password for droid user: {password}")

@@ -197,6 +197,16 @@ class CursesTUI:
         # Save selections for next time
         self._save_selections()
 
+        # If user module is selected, prompt for password configuration
+        if "user" in selected:
+            user_config = self._show_user_config_prompt()
+            if user_config is None:
+                return 0  # User cancelled
+            # Store user configuration for the module to use
+            if not hasattr(self.config, '_user_settings'):
+                self.config._user_settings = {}
+            self.config._user_settings.update(user_config)
+
         # Execute selected modules
         self.results = self._show_progress(selected)
 
@@ -218,6 +228,7 @@ class CursesTUI:
             "ssh": ("SSH Server", "Configure SSH server for remote access"),
             "shell": ("Shell Customizations", "Apply shell configurations and aliases"),
             "gui": ("GUI Helpers", "Install GUI helper scripts"),
+            "user": ("User Account", "Set password for droid user and configure sudo"),
         }
 
         available = list_modules()
@@ -796,6 +807,90 @@ class CursesTUI:
                 return RecoveryAction.SKIP
             elif key in (ord("a"), ord("A"), ord("q"), ord("Q"), 27):
                 return RecoveryAction.ABORT
+
+    def _show_user_config_prompt(self) -> Optional[dict]:
+        """Display user configuration prompt for password entry.
+
+        Returns:
+            Dictionary with user settings, or None if cancelled.
+        """
+        if self.stdscr is None:
+            return {}
+
+        # State for the prompt
+        password = ""
+
+        while True:
+            self.stdscr.clear()
+            height, width = self.stdscr.getmaxyx()
+
+            # Title
+            title = "User Account Configuration"
+            try:
+                self.stdscr.addstr(0, max(0, (width - len(title)) // 2), title, curses.A_BOLD)
+            except curses.error:
+                pass
+
+            # Description
+            y = 2
+            try:
+                desc = "Set password for the 'droid' user account."
+                self.stdscr.addstr(y, 0, desc)
+                y += 1
+                desc2 = "This password is needed for sudo and login screens."
+                self.stdscr.addstr(y, 0, desc2, curses.A_DIM)
+            except curses.error:
+                pass
+
+            # Password input field
+            y += 2
+            try:
+                self.stdscr.addstr(y, 0, "Enter password: ", curses.A_BOLD)
+                curses.curs_set(1)  # Show cursor
+                # Show password with cursor
+                self.stdscr.addstr(y, 16, password + "_")
+            except curses.error:
+                pass
+
+            # Password hint
+            y += 2
+            try:
+                hint = "Tip: Use a memorable password - you'll need it for login screens."
+                self.stdscr.addstr(y, 0, hint, curses.A_DIM)
+            except curses.error:
+                pass
+
+            # Instructions
+            instructions_y = height - 3
+            try:
+                self.stdscr.addstr(instructions_y, 0, "-" * width, curses.A_DIM)
+                self.stdscr.addstr(instructions_y + 1, 0, "Type password, then press Enter to confirm")
+                self.stdscr.addstr(instructions_y + 2, 0, "Press Escape to cancel")
+            except curses.error:
+                pass
+
+            self.stdscr.refresh()
+
+            # Handle input
+            try:
+                key = self.stdscr.getch()
+            except curses.error:
+                continue
+
+            if key == curses.KEY_RESIZE:
+                continue
+            elif key == 27:  # Escape
+                curses.curs_set(0)
+                return None  # Cancelled
+            elif key in (curses.KEY_ENTER, 10, 13):  # Enter
+                if password:
+                    curses.curs_set(0)
+                    return {"password": password}
+                # If empty, do nothing - require password
+            elif key in (curses.KEY_BACKSPACE, 127, 8):  # Backspace
+                password = password[:-1]
+            elif 32 <= key <= 126:  # Printable characters
+                password += chr(key)
 
     def _show_post_setup_menu(self) -> str:
         """Display post-setup menu screen.
